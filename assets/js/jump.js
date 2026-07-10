@@ -180,5 +180,39 @@ document.addEventListener('DOMContentLoaded', () => {
     renderActivePlatform();
   }
 
+  // Top-Level Navigation Tab Switcher
+  const mainTabs = document.querySelectorAll('.main-nav-tab');
+  const viewPanels = document.querySelectorAll('.view-panel');
+
+  mainTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      mainTabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+
+      const targetView = tab.getAttribute('data-tab');
+      viewPanels.forEach(panel => {
+        if (panel.id === targetView) {
+          panel.classList.add('active');
+          panel.style.display = 'flex';
+          
+          // Trigger scroll-to-bottom if switching back to chat view
+          if (targetView === 'chat-view') {
+            const chatMsgs = document.getElementById('chat-messages');
+            if (chatMsgs) {
+              chatMsgs.scrollTop = chatMsgs.scrollHeight;
+            }
+          }
+        } else {
+          panel.classList.remove('active');
+          panel.style.display = 'none';
+        }
+      });
+    });
+  });
+
   initMediaHub();
 });

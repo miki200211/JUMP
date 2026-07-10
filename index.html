@@ -28,11 +28,46 @@
       </div>
     </header>
 
-    <!-- Main Content Grid -->
-    <main class="dashboard-grid">
+    <!-- Top-Level Navigation Tabs -->
+    <nav class="main-nav" role="tablist">
+      <button class="main-nav-tab active" data-tab="chat-view" role="tab" aria-selected="true" aria-controls="chat-view">
+        💬 即時聊天
+      </button>
+      <button class="main-nav-tab" data-tab="media-view" role="tab" aria-selected="false" aria-controls="media-view">
+        📺 社群動態
+      </button>
+    </nav>
+
+    <!-- Main View Content -->
+    <main class="main-content">
       
-      <!-- Left Column: Embedded Media Hub -->
-      <section class="panel" aria-labelledby="jump-section-title">
+      <!-- View 1: Interactive Chat Room -->
+      <section id="chat-view" class="panel chat-panel view-panel active" aria-labelledby="chat-section-title">
+        <h2 class="panel-title" id="chat-section-title">
+          即時聊天室 <span>Live Chat</span>
+        </h2>
+        
+        <!-- Messages Board -->
+        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+          <!-- Dynamic Chat Bubbles Rendered via chat.js -->
+        </div>
+        
+        <!-- Input Toolbar -->
+        <form class="chat-input-bar" id="chat-form" autocomplete="off">
+          <input 
+            type="text" 
+            id="chat-input" 
+            placeholder="輸入訊息..." 
+            maxlength="500" 
+            required 
+            aria-label="訊息內容"
+          >
+          <button type="submit">送出</button>
+        </form>
+      </section>
+
+      <!-- View 2: Embedded Media Hub -->
+      <section id="media-view" class="panel view-panel" aria-labelledby="jump-section-title" style="display: none;">
         <h2 class="panel-title" id="jump-section-title">
           社群動態 <span>Media Hub</span>
         </h2>
@@ -57,31 +92,6 @@
             開啟官方應用程式
           </a>
         </div>
-      </section>
-
-      <!-- Right Column: Interactive Chat Room -->
-      <section class="panel chat-panel" aria-labelledby="chat-section-title">
-        <h2 class="panel-title" id="chat-section-title">
-          即時聊天室 <span>Live Chat</span>
-        </h2>
-        
-        <!-- Messages Board -->
-        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
-          <!-- Dynamic Chat Bubbles Rendered via chat.js -->
-        </div>
-        
-        <!-- Input Toolbar -->
-        <form class="chat-input-bar" id="chat-form" autocomplete="off">
-          <input 
-            type="text" 
-            id="chat-input" 
-            placeholder="輸入訊息..." 
-            maxlength="500" 
-            required 
-            aria-label="訊息內容"
-          >
-          <button type="submit">送出</button>
-        </form>
       </section>
 
     </main>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Jump — 社群入口與即時聊天</title>
+  <meta name="description" content="一站式社群平台跳轉入口與即時匿名聊天室，提供 YouTube、Instagram 與 Facebook 快速連結與安全互動體驗。">
+  
+  <!-- Styling -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header>
+      <div class="brand-section">
+        <h1>JUMP</h1>
+        <p>快速連結平台與即時社群互動</p>
+      </div>
+      
+      <!-- User Status & Nickname Display -->
+      <div class="user-status-panel">
+        <div class="user-avatar-dot"></div>
+        <span id="nickname-display">匿名訪客</span>
+        <button id="change-nickname-btn" aria-label="修改暱稱">修改</button>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="dashboard-grid">
+      
+      <!-- Left Column: Jump Links Gateway -->
+      <section class="panel" aria-labelledby="jump-section-title">
+        <h2 class="panel-title" id="jump-section-title">
+          社群入口 <span>Gateways</span>
+        </h2>
+        <div class="links-section" id="jump-links-container">
+          <!-- Dynamic Links Rendered via jump.js -->
+        </div>
+      </section>
+
+      <!-- Right Column: Interactive Chat Room -->
+      <section class="panel chat-panel" aria-labelledby="chat-section-title">
+        <h2 class="panel-title" id="chat-section-title">
+          即時聊天室 <span>Live Chat</span>
+        </h2>
+        
+        <!-- Messages Board -->
+        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+          <!-- Dynamic Chat Bubbles Rendered via chat.js -->
+        </div>
+        
+        <!-- Input Toolbar -->
+        <form class="chat-input-bar" id="chat-form" autocomplete="off">
+          <input 
+            type="text" 
+            id="chat-input" 
+            placeholder="輸入訊息..." 
+            maxlength="500" 
+            required 
+            aria-label="訊息內容"
+          >
+          <button type="submit">送出</button>
+        </form>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2026 Jump. Deployed statically via GitHub Pages and powered by Google Apps Script.</p>
+    </footer>
+  </div>
+
+  <!-- Nickname Entry Dialog (Modal Overlay) -->
+  <div class="modal-overlay" id="nickname-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <button class="modal-close-x" id="nickname-close-btn" aria-label="關閉視窗">&times;</button>
+      <h2 id="modal-title">設定您的暱稱</h2>
+      <p>請輸入一個在聊天室中顯示的名稱（1-20 字元）</p>
+      
+      <form id="nickname-form">
+        <input 
+          type="text" 
+          id="nickname-input" 
+          placeholder="例如：小明" 
+          maxlength="20" 
+          required
+        >
+        <button type="submit">確定</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/jump.js"></script>
+  <script src="assets/js/chat.js"></script>
+</body>
+</html>

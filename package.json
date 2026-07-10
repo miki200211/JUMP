@@ -1,0 +1,12 @@
+{
+  "name": "jump",
+  "version": "1.0.0",
+  "description": "Jump Gateway & Chat Room",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx http-server -p 8080"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

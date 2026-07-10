@@ -106,6 +106,17 @@ header {
   background-color: var(--color-success);
   border-radius: 50%;
   box-shadow: 0 0 8px var(--color-success);
+  transition: var(--transition-smooth);
+}
+
+.user-avatar-dot.offline {
+  background-color: var(--color-danger);
+  box-shadow: 0 0 8px var(--color-danger);
+}
+
+.user-avatar-dot.connecting {
+  background-color: var(--color-warning);
+  box-shadow: 0 0 8px var(--color-warning);
 }
 
 #nickname-display {

@@ -70,8 +70,7 @@ function getOrCreateSpreadsheet(folder, name, headers) {
   const ss = SpreadsheetApp.create(name);
   const file = DriveApp.getFileById(ss.getId());
   
-  folder.addFile(file);
-  DriveApp.getRootFolder().removeFile(file);
+  file.moveTo(folder);
   
   const sheet = ss.getSheets()[0];
   sheet.appendRow(headers);

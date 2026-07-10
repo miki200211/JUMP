@@ -238,9 +238,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const statusDot = document.querySelector('.user-avatar-dot');
     const res = await api.getMessages(lastServerTs);
     
     if (res && res.ok && res.data) {
+      if (statusDot) {
+        statusDot.classList.remove('offline', 'connecting');
+        statusDot.title = '連線正常';
+      }
       // Reset exponential backoff
       currentPollInterval = CONFIG.POLL_INTERVAL_MS;
 
@@ -257,6 +262,11 @@ document.addEventListener('DOMContentLoaded', () => {
         lastServerTs = res.data.serverTs;
       }
     } else {
+      if (statusDot) {
+        statusDot.classList.add('offline');
+        statusDot.classList.remove('connecting');
+        statusDot.title = '連線失敗，正在重試...';
+      }
       // Exponential backoff on network errors
       currentPollInterval = Math.min(
         currentPollInterval * 1.5,
@@ -274,14 +284,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function startPolling() {
+    const statusDot = document.querySelector('.user-avatar-dot');
+    if (statusDot && !CONFIG.API_BASE.includes('YOUR_DEPLOYMENT_ID')) {
+      statusDot.classList.add('connecting');
+      statusDot.title = '連線中...';
+    }
     if (pollTimeoutId) clearTimeout(pollTimeoutId);
     pollTimeoutId = setTimeout(pollMessages, 500); // quick first check
   }
 
   // Handle Visibility API to pause polling on hidden tab
   document.addEventListener('visibilitychange', () => {
+    const statusDot = document.querySelector('.user-avatar-dot');
     if (document.hidden) {
       console.log('Tab hidden. Polling paused.');
+      if (statusDot) {
+        statusDot.classList.add('connecting');
+        statusDot.title = '已暫停輪詢';
+      }
       if (pollTimeoutId) {
         clearTimeout(pollTimeoutId);
         pollTimeoutId = null;

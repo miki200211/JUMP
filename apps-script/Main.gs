@@ -21,7 +21,16 @@ function doGet(e) {
     
     return jsonError('INVALID_ACTION', 'Action is invalid or not specified.');
   } catch (err) {
-    return jsonError('SERVER_ERROR', err.toString());
+    const errMsg = err.toString();
+    let code = 'SERVER_ERROR';
+    let message = errMsg;
+    
+    const match = errMsg.match(/Error:\s*([A-Z_]+):\s*(.*)/) || errMsg.match(/([A-Z_]+):\s*(.*)/);
+    if (match) {
+      code = match[1];
+      message = match[2];
+    }
+    return jsonError(code, message.trim());
   }
 }
 
@@ -53,6 +62,15 @@ function doPost(e) {
     
     return jsonError('INVALID_ACTION', 'Action is invalid or not specified.');
   } catch (err) {
-    return jsonError('SERVER_ERROR', err.toString());
+    const errMsg = err.toString();
+    let code = 'SERVER_ERROR';
+    let message = errMsg;
+    
+    const match = errMsg.match(/Error:\s*([A-Z_]+):\s*(.*)/) || errMsg.match(/([A-Z_]+):\s*(.*)/);
+    if (match) {
+      code = match[1];
+      message = match[2];
+    }
+    return jsonError(code, message.trim());
   }
 }

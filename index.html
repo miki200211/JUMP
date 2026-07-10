@@ -31,13 +31,31 @@
     <!-- Main Content Grid -->
     <main class="dashboard-grid">
       
-      <!-- Left Column: Jump Links Gateway -->
+      <!-- Left Column: Embedded Media Hub -->
       <section class="panel" aria-labelledby="jump-section-title">
         <h2 class="panel-title" id="jump-section-title">
-          社群入口 <span>Gateways</span>
+          社群動態 <span>Media Hub</span>
         </h2>
-        <div class="links-section" id="jump-links-container">
-          <!-- Dynamic Links Rendered via jump.js -->
+        
+        <!-- Tab Navigation Buttons -->
+        <div class="media-tabs" role="tablist">
+          <button class="media-tab active" data-platform="youtube" role="tab" aria-selected="true" aria-controls="media-viewport">YouTube</button>
+          <button class="media-tab" data-platform="instagram" role="tab" aria-selected="false" aria-controls="media-viewport">Instagram</button>
+          <button class="media-tab" data-platform="facebook" role="tab" aria-selected="false" aria-controls="media-viewport">Facebook</button>
+        </div>
+
+        <!-- Viewport Container for IFrame Embeds -->
+        <div class="media-viewport-container">
+          <div id="media-viewport" class="media-viewport">
+            <!-- IFrame dynamically loaded here -->
+          </div>
+        </div>
+
+        <!-- External Link Button (For deep linking/app launches) -->
+        <div class="media-footer">
+          <a id="external-app-link" class="app-btn" href="#" target="_blank" rel="noopener noreferrer">
+            開啟官方應用程式
+          </a>
         </div>
       </section>
 

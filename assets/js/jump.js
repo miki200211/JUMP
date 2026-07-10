@@ -1,118 +1,184 @@
 /**
- * Gateway Jump Link Component
- * Handles dynamic rendering of platform cards and analytics tracking.
+ * Embedded Media Hub Component
+ * Handles tab switching, dynamic iframe URL parsing, and action tracking.
  */
 document.addEventListener('DOMContentLoaded', () => {
-  const container = document.getElementById('jump-links-container');
-  if (!container) return;
+  const viewport = document.getElementById('media-viewport');
+  const externalLink = document.getElementById('external-app-link');
+  const tabs = document.querySelectorAll('.media-tab');
 
+  if (!viewport) return;
+
+  // Fallback defaults if API configuration fails
   const DEFAULT_LINKS = [
     {
       id: 'youtube',
-      label: 'YouTube 頻道',
-      url: 'https://www.youtube.com/',
-      icon: 'yt.svg'
+      label: 'YouTube',
+      url: 'https://www.youtube.com/watch?v=jfKfPfyJRdk', // Default Lofi Girl stream
+      enabled: true
     },
     {
       id: 'instagram',
       label: 'Instagram',
-      url: 'https://www.instagram.com/',
-      icon: 'ig.svg'
+      url: 'https://www.instagram.com/p/CG4t_SgnV2x/', // Instagram official post
+      enabled: true
     },
     {
       id: 'facebook',
       label: 'Facebook',
-      url: 'https://www.facebook.com/',
-      icon: 'fb.svg'
+      url: 'https://www.facebook.com/facebook', // Facebook page
+      enabled: true
     }
   ];
 
-  /**
-   * Render link cards to DOM
-   */
-  function renderLinks(links) {
-    container.innerHTML = '';
-    
-    links.forEach(link => {
-      if (link.enabled === false) return;
+  let linksData = [];
+  let currentPlatform = 'youtube';
 
-      const card = document.createElement('a');
-      card.className = 'jump-card';
-      card.href = link.url;
-      card.target = '_blank';
-      card.setAttribute('rel', 'noopener noreferrer');
-      card.setAttribute('data-id', link.id);
-      
-      // Attempt deep linking on mobile platforms
-      if (link.appScheme && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
-        card.addEventListener('click', (e) => {
-          // If app scheme works, browser opens it, otherwise fallback target="_blank" handles it
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = link.appScheme;
-          document.body.appendChild(iframe);
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-          }, 500);
-        });
+  /**
+   * Parse profile/video/post links to their respective embeddable iframe URLs
+   */
+  function getEmbedUrl(platform, configUrl) {
+    if (!configUrl) return '';
+
+    if (platform === 'youtube') {
+      let videoId = '';
+      // Watch URL: watch?v=VIDEO_ID
+      const watchMatch = configUrl.match(/[?&]v=([^&#]+)/);
+      if (watchMatch) {
+        videoId = watchMatch[1];
+      } else {
+        // Short URL: youtu.be/VIDEO_ID
+        const shortMatch = configUrl.match(/youtu\.be\/([^&#?]+)/);
+        if (shortMatch) {
+          videoId = shortMatch[1];
+        } else {
+          // Shorts URL: shorts/VIDEO_ID
+          const shortsMatch = configUrl.match(/shorts\/([^&#?]+)/);
+          if (shortsMatch) {
+            videoId = shortsMatch[1];
+          } else {
+            // Embed URL: embed/VIDEO_ID
+            const embedMatch = configUrl.match(/embed\/([^&#?]+)/);
+            if (embedMatch) {
+              videoId = embedMatch[1];
+            }
+          }
+        }
       }
 
-      card.innerHTML = `
-        <div class="card-icon">
-          <img src="assets/img/icons/${link.icon}" alt="${link.label} Icon" onerror="this.src='https://img.icons8.com/color/48/000000/link.png';">
-        </div>
-        <div class="card-info">
-          <h3>${link.label}</h3>
-          <p>開啟官方應用程式或網站</p>
-        </div>
-        <div class="card-arrow">
-          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-            <polyline points="12 5 19 12 12 19"></polyline>
-          </svg>
-        </div>
-      `;
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+      }
+      
+      // Fallback if it is a channel link (YouTube doesn't allow profile iframes)
+      return 'https://www.youtube.com/embed/jfKfPfyJRdk';
+    }
 
-      container.appendChild(card);
-    });
+    if (platform === 'facebook') {
+      // Use official Meta Page Plugin URL
+      const encodedUrl = encodeURIComponent(configUrl);
+      return `https://www.facebook.com/plugins/page.php?href=${encodedUrl}&tabs=timeline&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false&height=400`;
+    }
+
+    if (platform === 'instagram') {
+      // Check if it's a post or reel path
+      const postMatch = configUrl.match(/\/(p|reel)\/([^/?#]+)/);
+      if (postMatch) {
+        const postId = postMatch[2];
+        return `https://www.instagram.com/p/${postId}/embed`;
+      }
+      
+      // Fallback post if configUrl is just a profile link (Instagram blocks profile iframes)
+      return 'https://www.instagram.com/p/CG4t_SgnV2x/embed';
+    }
+
+    return configUrl;
   }
 
   /**
-   * Initialize links: Try API first, fallback to defaults if config placeholder or API fails
+   * Load active platform iframe into the viewport
    */
-  async function initLinks() {
-    container.innerHTML = `
-      <div class="links-loading">
-        <div class="spinner"></div>
-        <p>載入社群入口中...</p>
-      </div>
+  function renderActivePlatform() {
+    const linkInfo = linksData.find(l => l.id === currentPlatform);
+    if (!linkInfo || linkInfo.enabled === false) {
+      viewport.innerHTML = `<p class="error-msg" style="padding:2rem;color:var(--text-secondary);">該平台目前處於停用狀態。</p>`;
+      return;
+    }
+
+    viewport.innerHTML = `
+      <div class="spinner"></div>
+      <p style="margin-top:1rem;font-size:0.9rem;color:var(--text-secondary);">載入播放器中...</p>
     `;
 
+    const embedUrl = getEmbedUrl(currentPlatform, linkInfo.url);
+
+    // Create iframe element
+    const iframe = document.createElement('iframe');
+    iframe.src = embedUrl;
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.allowFullscreen = true;
+    iframe.style.opacity = '0';
+    iframe.style.transition = 'opacity 0.3s ease';
+
+    // Fade-in when fully loaded
+    iframe.onload = () => {
+      iframe.style.opacity = '1';
+      const spinner = viewport.querySelector('.spinner');
+      const text = viewport.querySelector('p');
+      if (spinner) spinner.remove();
+      if (text) text.remove();
+    };
+
+    viewport.innerHTML = '';
+    viewport.appendChild(iframe);
+
+    // Configure external button links & action beacons
+    if (externalLink) {
+      externalLink.href = linkInfo.url;
+      externalLink.textContent = `在 ${linkInfo.label || currentPlatform.toUpperCase()} 開啟`;
+      
+      // Click analytics tracker
+      externalLink.onclick = () => {
+        api.trackClick(currentPlatform);
+      };
+    }
+  }
+
+  // Setup tab event handlers
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+
+      currentPlatform = tab.getAttribute('data-platform');
+      renderActivePlatform();
+    });
+  });
+
+  /**
+   * Initialize Media Hub configurations
+   */
+  async function initMediaHub() {
     if (CONFIG.API_BASE.includes('YOUR_DEPLOYMENT_ID')) {
-      console.warn('API_BASE is using the default placeholder. Using client-side fallbacks.');
-      renderLinks(DEFAULT_LINKS);
+      console.warn('API_BASE is the default placeholder. Using client-side fallbacks.');
+      linksData = DEFAULT_LINKS;
+      renderActivePlatform();
       return;
     }
 
     const res = await api.getLinks();
     if (res && res.ok && res.data && res.data.links) {
-      renderLinks(res.data.links);
+      linksData = res.data.links;
     } else {
-      console.error('API links loading failed. Falling back to default list.');
-      renderLinks(DEFAULT_LINKS);
+      console.error('Failed to load links from API, loading client fallbacks.');
+      linksData = DEFAULT_LINKS;
     }
+    renderActivePlatform();
   }
 
-  // Event Delegation for tracking clicks
-  container.addEventListener('click', (e) => {
-    const card = e.target.closest('.jump-card');
-    if (card) {
-      const linkId = card.getAttribute('data-id');
-      if (linkId) {
-        api.trackClick(linkId);
-      }
-    }
-  });
-
-  initLinks();
+  initMediaHub();
 });

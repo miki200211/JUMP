@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JUMP Tube — 獨立影音搜尋與播放器</title>
-  <meta name="description" content="無需直接連線 YouTube 即可進行搜尋與播放的獨立影音入口。">
+  <title>JUMP Tube — YouTube 免封鎖安全通道</title>
+  <meta name="description" content="提供多個免費、免登入限制且可直接登入 Google 帳號的 YouTube 代理中轉入口。">
   
   <!-- Font -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
@@ -46,7 +46,7 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1000px;
       width: 100%;
       margin: 0 auto;
       padding: 2rem 1.5rem;
@@ -54,359 +54,6 @@
       display: flex;
       flex-direction: column;
       gap: 2rem;
-    }
-
-    /* Header */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 1.5rem;
-      border-bottom: 1px solid var(--border-color);
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    .brand h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
-    }
-
-    .brand p {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      margin-top: 0.25rem;
-    }
-
-    .status-panel {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      background: var(--bg-card);
-      padding: 0.5rem 1rem;
-      border-radius: 50px;
-      border: 1px solid var(--border-color);
-      font-size: 0.85rem;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background-color: #f59e0b;
-      border-radius: 50%;
-      box-shadow: 0 0 8px #f59e0b;
-      transition: var(--transition-smooth);
-    }
-
-    .status-dot.online {
-      background-color: #10b981;
-      box-shadow: 0 0 8px #10b981;
-    }
-
-    .status-dot.offline {
-      background-color: #ef4444;
-      box-shadow: 0 0 8px #ef4444;
-    }
-
-    /* Back Home Button */
-    .back-btn {
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: var(--transition-smooth);
-    }
-
-    .back-btn:hover {
-      color: var(--text-primary);
-    }
-
-    /* Search Section */
-    .search-bar-container {
-      display: flex;
-      justify-content: center;
-      width: 100%;
-    }
-
-    .search-form {
-      display: flex;
-      width: 100%;
-      max-width: 650px;
-      gap: 0.75rem;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      padding: 0.5rem 0.75rem;
-      border-radius: 16px;
-      transition: var(--transition-smooth);
-    }
-
-    .search-form:focus-within {
-      border-color: #ef4444;
-      box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
-    }
-
-    .search-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text-primary);
-      font-family: var(--font-primary);
-      font-size: 1rem;
-      padding: 0.5rem 0.25rem;
-    }
-
-    .search-input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .search-btn {
-      background: var(--accent-gradient);
-      color: white;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      padding: 0.5rem 1.5rem;
-      border-radius: 12px;
-      font-family: var(--font-primary);
-      font-weight: 600;
-      font-size: 0.95rem;
-      transition: var(--transition-smooth);
-    }
-
-    .search-btn:hover {
-      filter: brightness(1.1);
-      transform: translateY(-1px);
-    }
-
-    /* Main Grid */
-    .video-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.5rem;
-    }
-
-    /* Video Card */
-    .video-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      overflow: hidden;
-      cursor: pointer;
-      transition: var(--transition-smooth);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .video-card:hover {
-      background: var(--bg-card-hover);
-      transform: translateY(-4px);
-      border-color: rgba(239, 68, 68, 0.3);
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    }
-
-    .thumbnail-container {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background-color: #000;
-      overflow: hidden;
-    }
-
-    .thumbnail {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: var(--transition-smooth);
-    }
-
-    .video-card:hover .thumbnail {
-      transform: scale(1.03);
-    }
-
-    .duration {
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      background: rgba(0, 0, 0, 0.8);
-      color: #fff;
-      font-size: 0.75rem;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 500;
-    }
-
-    .card-info {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      flex: 1;
-    }
-
-    .video-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      line-height: 1.4;
-    }
-
-    .video-channel {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-    }
-
-    .video-meta {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-top: auto;
-    }
-
-    /* Modal Player */
-    .player-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(11, 9, 20, 0.95);
-      backdrop-filter: blur(15px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      opacity: 0;
-      visibility: hidden;
-      z-index: 2000;
-      transition: var(--transition-smooth);
-      padding: 1rem;
-    }
-
-    .player-modal.active {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .player-container {
-      width: 100%;
-      max-width: 900px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 24px;
-      overflow: hidden;
-      position: relative;
-      transform: translateY(30px);
-      transition: var(--transition-smooth);
-    }
-
-    .player-modal.active .player-container {
-      transform: translateY(0);
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 1.25rem;
-      right: 1.25rem;
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid var(--border-color);
-      color: var(--text-primary);
-      font-size: 1.5rem;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: var(--transition-smooth);
-      z-index: 10;
-    }
-
-    .close-btn:hover {
-      background: var(--accent-red);
-      border-color: var(--accent-red);
-    }
-
-    .iframe-wrapper {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      background: #000;
-    }
-
-    .iframe-wrapper iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    .player-info {
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .player-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-      line-height: 1.4;
-    }
-
-    .player-channel {
-      font-size: 0.95rem;
-      color: var(--text-secondary);
-    }
-
-    /* Loader */
-    .loader-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 300px;
-      gap: 1rem;
-    }
-
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid rgba(239, 68, 68, 0.1);
-      border-radius: 50%;
-      border-top-color: var(--accent-red);
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .message {
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 1rem;
-      padding: 3rem;
-    }
-
-    footer {
-      text-align: center;
-      padding: 2rem 0;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      border-top: 1px solid var(--border-color);
-      margin-top: auto;
     }
 
     /* --- Top-Level Navigation Tabs --- */
@@ -459,6 +106,133 @@
       background: var(--accent-gradient);
       box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
     }
+
+    /* Header */
+    header {
+      padding-bottom: 1rem;
+    }
+
+    .brand h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .brand p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Portal Panel */
+    .portal-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .portal-desc {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .alert-box {
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 12px;
+      padding: 1rem;
+      font-size: 0.85rem;
+      color: #fca5a5;
+    }
+
+    /* Channels Grid */
+    .channels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .channel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: var(--transition-smooth);
+    }
+
+    .channel-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-red);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .channel-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .channel-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .channel-badge {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 50px;
+      font-weight: 600;
+      width: fit-content;
+    }
+
+    .launch-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-gradient);
+      color: white;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.8rem;
+      border-radius: 12px;
+      text-align: center;
+      transition: var(--transition-smooth);
+    }
+
+    .launch-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      margin-top: auto;
+    }
   </style>
 </head>
 <body>
@@ -475,256 +249,52 @@
     <header>
       <div class="brand">
         <h1>JUMP Tube</h1>
-        <p>免 YouTube 網址的獨立安全播放系統</p>
-      </div>
-      
-      <div class="status-panel">
-        <div class="status-dot" id="status-dot"></div>
-        <span id="status-text">正在偵測最快伺服器...</span>
+        <p>YouTube 免封鎖中轉入口</p>
       </div>
     </header>
 
-    <!-- Search Section -->
-    <div class="search-bar-container">
-      <form class="search-form" id="search-form" autocomplete="off">
-        <input 
-          type="text" 
-          id="search-input" 
-          class="search-input" 
-          placeholder="搜尋影音、音樂..." 
-          required
-        >
-        <button type="submit" class="search-btn">搜尋</button>
-      </form>
-    </div>
+    <div class="portal-panel">
+      <p class="portal-desc">
+        本頁面為 YouTube 中轉服務站。當您身處防火牆限制環境（如學校、公司網路阻擋 <code>youtube.com</code>）時，可以使用以下代理通道直接存取 YouTube。<br>
+        <strong>特色：</strong>免官方網址連線、防火牆完全豁免，且<strong>【支援直接登入您的 Google 帳戶】</strong>，功能與原版完全一致。
+      </p>
 
-    <!-- Video List Area -->
-    <div id="content-area">
-      <div class="loader-container" id="initial-loader">
-        <div class="spinner"></div>
-        <p>連線至安全鏡像伺服器中...</p>
+      <div class="alert-box">
+        💡 <strong>使用提示：</strong>點擊下方通道按鈕後，會直接在代理網頁內載入 YouTube。您可以在代理網頁的右上角點選「登入」，登入您原本的 YouTube 帳號來查看訂閱與播放清單。
       </div>
-      <div class="video-grid" id="video-grid" style="display: none;"></div>
+
+      <div class="channels-grid">
+        <!-- Channel 1 -->
+        <div class="channel-card">
+          <div class="channel-name">🎥 通道 A：YouTube 專屬代理</div>
+          <span class="channel-badge">最推薦</span>
+          <div class="channel-desc">專為 YouTube 設計的高速代理網域，解析度高、播放極為流暢，支援登入與訂閱。</div>
+          <a href="https://www.youtube-unblocked.com/" class="launch-btn" target="_blank" rel="noopener noreferrer">開啟 YouTube 代理</a>
+        </div>
+
+        <!-- Channel 2 -->
+        <div class="channel-card">
+          <div class="channel-name">🛡️ 通道 B：BlockAway 代理</div>
+          <span class="channel-badge">穩定備用</span>
+          <div class="channel-desc">知名的 Web Proxy 服務，網路連線極為穩定，能流暢解析 YouTube 複雜的動態 JS 與影音串流。</div>
+          <a href="https://www.blockaway.net/" class="launch-btn" target="_blank" rel="noopener noreferrer">開啟 BlockAway 代理</a>
+        </div>
+
+        <!-- Channel 3 -->
+        <div class="channel-card">
+          <div class="channel-name">⚡ 通道 C：CroxyProxy 代理</div>
+          <span class="channel-badge">備用通道</span>
+          <div class="channel-desc">多節點中轉代理伺服器，當其他通道擁擠或遭封鎖時的優良替代方案。</div>
+          <a href="https://www.croxyproxy.com/" class="launch-btn" target="_blank" rel="noopener noreferrer">開啟 CroxyProxy 代理</a>
+        </div>
+      </div>
     </div>
 
     <!-- Footer -->
     <footer>
-      <p>&copy; 2026 Jump. Powered by decentralized mirror APIs.</p>
+      <p>&copy; 2026 Jump. Powered by unblocked web proxy gateways.</p>
     </footer>
   </div>
 
-  <!-- Player Modal -->
-  <div class="player-modal" id="player-modal">
-    <div class="player-container">
-      <button class="close-btn" id="close-modal-btn" aria-label="關閉播放器">&times;</button>
-      <div class="iframe-wrapper">
-        <iframe id="video-iframe" src="" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
-      </div>
-      <div class="player-info">
-        <h2 class="player-title" id="player-title">影片載入中...</h2>
-        <p class="player-channel" id="player-channel"></p>
-      </div>
-    </div>
-  </div>
-
-  <!-- JavaScript logic -->
-  <script>
-    // List of reliable public Invidious instances to query
-    const INVIDIOUS_INSTANCES = [
-      'https://invidious.lunar.icu',
-      'https://inv.tux.pizza',
-      'https://invidious.nerdvpn.de',
-      'https://yewtu.be',
-      'https://inv.zoomerville.com'
-    ];
-
-    let activeInstance = '';
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-    const videoGrid = document.getElementById('video-grid');
-    const initialLoader = document.getElementById('initial-loader');
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('search-input');
-    
-    // Modal Elements
-    const playerModal = document.getElementById('player-modal');
-    const closeModalBtn = document.getElementById('close-modal-btn');
-    const videoIframe = document.getElementById('video-iframe');
-    const playerTitle = document.getElementById('player-title');
-    const playerChannel = document.getElementById('player-channel');
-
-    /**
-     * Find the fastest working Invidious instance
-     */
-    async function selectInstance() {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
-
-      const promises = INVIDIOUS_INSTANCES.map(async (instance) => {
-        try {
-          const res = await fetch(`${instance}/api/v1/search?q=test&page=1`, {
-            signal: controller.signal
-          });
-          if (res.ok) {
-            return instance;
-          }
-        } catch (e) {
-          // Ignore failed instances
-        }
-        throw new Error('Failed');
-      });
-
-      try {
-        const fastest = await Promise.any(promises);
-        clearTimeout(timeoutId);
-        activeInstance = fastest;
-        statusDot.className = 'status-dot online';
-        statusText.textContent = `伺服器已連線 (${new URL(fastest).hostname})`;
-        return fastest;
-      } catch (e) {
-        clearTimeout(timeoutId);
-        // Fallback to a default if all fail pings
-        activeInstance = INVIDIOUS_INSTANCES[0];
-        statusDot.className = 'status-dot online';
-        statusText.textContent = `伺服器已連線 (${new URL(activeInstance).hostname})`;
-        return activeInstance;
-      }
-    }
-
-    /**
-     * Format numbers to readably short numbers (e.g. 1.2M views)
-     */
-    function formatViews(num) {
-      if (!num) return '';
-      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M次觀看';
-      if (num >= 1000) return (num / 1000).toFixed(1) + 'K次觀看';
-      return num + '次觀看';
-    }
-
-    /**
-     * Search and render videos
-     */
-    async function performSearch(query) {
-      initialLoader.style.display = 'flex';
-      videoGrid.style.display = 'none';
-      videoGrid.innerHTML = '';
-
-      if (!activeInstance) {
-        await selectInstance();
-      }
-
-      try {
-        const res = await fetch(`${activeInstance}/api/v1/search?q=${encodeURIComponent(query)}`);
-        if (!res.ok) throw new Error('Search failed');
-        
-        const data = await res.json();
-        const videos = data.filter(item => item.type === 'video');
-
-        if (videos.length === 0) {
-          videoGrid.innerHTML = `<div class="message">找不到與「${query}」相關的影片，請更換關鍵字再試。</div>`;
-        } else {
-          videos.forEach(video => {
-            const card = document.createElement('div');
-            card.className = 'video-card';
-            
-            // Extract the thumbnail URL. Many instances return relative paths or absolute ones
-            let thumbUrl = '';
-            if (video.videoThumbnails && video.videoThumbnails.length > 0) {
-              // Get high quality thumbnail
-              const t = video.videoThumbnails.find(x => x.quality === 'medium' || x.quality === 'high') || video.videoThumbnails[0];
-              thumbUrl = t.url;
-              if (thumbUrl.startsWith('/')) {
-                thumbUrl = activeInstance + thumbUrl;
-              }
-            }
-
-            const viewsStr = formatViews(video.viewCount);
-            const timeFormatted = video.lengthSeconds ? 
-              new Date(video.lengthSeconds * 1000).toISOString().substring(11, 19).replace(/^00:/, '') : '';
-
-            card.innerHTML = `
-              <div class="thumbnail-container">
-                <img class="thumbnail" src="${thumbUrl}" alt="${video.title}" loading="lazy">
-                ${timeFormatted ? `<span class="duration">${timeFormatted}</span>` : ''}
-              </div>
-              <div class="card-info">
-                <h3 class="video-title">${video.title}</h3>
-                <div class="video-channel">${video.author}</div>
-                <div class="video-meta">
-                  <span>${viewsStr}</span> • <span>${video.publishedText || ''}</span>
-                </div>
-              </div>
-            `;
-
-            card.addEventListener('click', () => {
-              openPlayer(video.videoId, video.title, video.author);
-            });
-
-            videoGrid.appendChild(card);
-          });
-        }
-      } catch (err) {
-        console.error(err);
-        videoGrid.innerHTML = `
-          <div class="message">
-            搜尋發生錯誤，可能此鏡像伺服器暫時無法使用。<br>
-            <button onclick="retrySearch('${query}')" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--accent-gradient); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">切換伺服器並重試</button>
-          </div>
-        `;
-      } finally {
-        initialLoader.style.display = 'none';
-        videoGrid.style.display = 'grid';
-      }
-    }
-
-    async function retrySearch(query) {
-      statusText.textContent = '正在重新連線至其他伺服器...';
-      statusDot.className = 'status-dot';
-      activeInstance = '';
-      await selectInstance();
-      performSearch(query);
-    }
-
-    /**
-     * Modal Player Controls
-     */
-    function openPlayer(videoId, title, author) {
-      playerTitle.textContent = title;
-      playerChannel.textContent = author;
-      // Using invidious embed endpoint to display player
-      videoIframe.src = `${activeInstance}/embed/${videoId}?autoplay=1&listen=0`;
-      playerModal.classList.add('active');
-    }
-
-    function closePlayer() {
-      playerModal.classList.remove('active');
-      videoIframe.src = '';
-    }
-
-    // Event Listeners
-    searchForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const val = searchInput.value.trim();
-      if (val) {
-        performSearch(val);
-      }
-    });
-
-    closeModalBtn.addEventListener('click', closePlayer);
-    
-    // Close modal on overlay click
-    playerModal.addEventListener('click', (e) => {
-      if (e.target === playerModal) {
-        closePlayer();
-      }
-    });
-
-    // Initialize
-    window.addEventListener('DOMContentLoaded', async () => {
-      await selectInstance();
-      // Search a default topic on load so the interface looks lively
-      performSearch('Lofi hip hop radio');
-    });
-  </script>
 </body>
 </html>

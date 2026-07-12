@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JUMP Facebook — 獨立粉專動態檢視器</title>
-  <meta name="description" content="免登入帳號、免 Facebook 官方主網域即可安全瀏覽公開粉絲專頁的獨立入口。">
+  <title>JUMP Facebook — Facebook 免封鎖安全通道</title>
+  <meta name="description" content="提供多個免連線 Facebook 官方網域、可正常登入帳號的代理中轉入口。">
   
   <!-- Font -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
@@ -54,274 +54,6 @@
       display: flex;
       flex-direction: column;
       gap: 2rem;
-    }
-
-    /* Header */
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 1.5rem;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .brand h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
-    }
-
-    .brand p {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      margin-top: 0.25rem;
-    }
-
-    /* Back Home Button */
-    .back-btn {
-      color: var(--text-secondary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: var(--transition-smooth);
-    }
-
-    .back-btn:hover {
-      color: var(--text-primary);
-    }
-
-    /* Search Section */
-    .search-panel {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 24px;
-      padding: 2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-    }
-
-    .search-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    .search-form {
-      display: flex;
-      gap: 0.75rem;
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      padding: 0.5rem 0.75rem;
-      border-radius: 16px;
-      transition: var(--transition-smooth);
-    }
-
-    .search-form:focus-within {
-      border-color: var(--accent-blue);
-      box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
-    }
-
-    .search-input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text-primary);
-      font-family: var(--font-primary);
-      font-size: 1rem;
-      padding: 0.5rem 0.25rem;
-    }
-
-    .search-btn {
-      background: var(--accent-gradient);
-      color: white;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      padding: 0.5rem 1.5rem;
-      border-radius: 12px;
-      font-family: var(--font-primary);
-      font-weight: 600;
-      font-size: 0.95rem;
-      transition: var(--transition-smooth);
-    }
-
-    .search-btn:hover {
-      filter: brightness(1.1);
-      transform: translateY(-1px);
-    }
-
-    /* Results Area */
-    .results-container {
-      display: none;
-      flex-direction: column;
-      gap: 1.5rem;
-      animation: fadeIn 0.3s ease-out forwards;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .mirror-options-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      border-left: 3px solid var(--accent-blue);
-      padding-left: 0.75rem;
-    }
-
-    .mirror-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-
-    .mirror-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      transition: var(--transition-smooth);
-    }
-
-    .mirror-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--accent-blue);
-      transform: translateY(-2px);
-    }
-
-    .mirror-name {
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-
-    .mirror-desc {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      flex: 1;
-    }
-
-    .mirror-link-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--accent-gradient);
-      color: white;
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-      padding: 0.65rem;
-      border-radius: 10px;
-      text-align: center;
-      transition: var(--transition-smooth);
-    }
-
-    .mirror-link-btn:hover {
-      filter: brightness(1.1);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
-    }
-
-    /* IFrame Preview container */
-    .preview-panel {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 24px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      min-height: 500px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-    }
-
-    .preview-header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(0,0,0,0.2);
-    }
-
-    .preview-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-
-    .preview-actions {
-      display: flex;
-      gap: 0.75rem;
-    }
-
-    .preview-btn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--border-color);
-      color: var(--text-primary);
-      padding: 0.4rem 0.8rem;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      text-decoration: none;
-      transition: var(--transition-smooth);
-    }
-
-    .preview-btn:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: var(--accent-blue);
-    }
-
-    .iframe-viewport {
-      flex: 1;
-      width: 100%;
-      position: relative;
-      background: #0d0c16;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .iframe-viewport iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-
-    .preview-placeholder {
-      text-align: center;
-      padding: 3rem;
-      color: var(--text-secondary);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .preview-placeholder p {
-      max-width: 450px;
-      font-size: 0.95rem;
-    }
-
-    footer {
-      text-align: center;
-      padding: 2rem 0;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      border-top: 1px solid var(--border-color);
-      margin-top: auto;
     }
 
     /* --- Top-Level Navigation Tabs --- */
@@ -374,6 +106,133 @@
       background: var(--accent-gradient);
       box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
     }
+
+    /* Header */
+    header {
+      padding-bottom: 1rem;
+    }
+
+    .brand h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .brand p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Portal Panel */
+    .portal-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .portal-desc {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .alert-box {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 12px;
+      padding: 1rem;
+      font-size: 0.85rem;
+      color: #93c5fd;
+    }
+
+    /* Channels Grid */
+    .channels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .channel-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      transition: var(--transition-smooth);
+    }
+
+    .channel-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-blue);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .channel-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .channel-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .channel-badge {
+      background: rgba(59, 130, 246, 0.15);
+      color: #93c5fd;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 50px;
+      font-weight: 600;
+      width: fit-content;
+    }
+
+    .launch-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-gradient);
+      color: white;
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.8rem;
+      border-radius: 12px;
+      text-align: center;
+      transition: var(--transition-smooth);
+    }
+
+    .launch-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.25);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      margin-top: auto;
+    }
   </style>
 </head>
 <body>
@@ -390,126 +249,52 @@
     <header>
       <div class="brand">
         <h1>JUMP Facebook</h1>
-        <p>免登入帳號、免 FB 官方網域的獨立社群檢視器</p>
+        <p>Facebook 免封鎖中轉入口</p>
       </div>
     </header>
 
-    <!-- Search input -->
-    <div class="search-panel">
-      <h2 class="search-title">輸入公開粉專 ID 以產生免封鎖瀏覽入口</h2>
-      <form class="search-form" id="search-form" autocomplete="off">
-        <input 
-          type="text" 
-          id="username-input" 
-          class="search-input" 
-          placeholder="請輸入 Facebook 粉專帳號或 ID (例如：cocacola 或 12345678)" 
-          required
-        >
-        <button type="submit" class="search-btn">送出</button>
-      </form>
-    </div>
+    <div class="portal-panel">
+      <p class="portal-desc">
+        本頁面為 Facebook 中轉服務站。當您身處防火牆限制環境（如學校、公司網路阻擋 <code>facebook.com</code>）時，可以使用以下代理通道直接存取 Facebook。<br>
+        <strong>特色：</strong>免官方網址連線、防火牆完全豁免，且<strong>【支援直接登入您的 Facebook 帳號】</strong>，可正常發表貼文、按讚與使用 Messenger 聊天功能。
+      </p>
 
-    <!-- Results -->
-    <div class="results-container" id="results-container">
-      <h3 class="mirror-options-title" id="results-title">公開專頁瀏覽選項</h3>
-      
-      <div class="mirror-grid">
-        <!-- mbasic Facebook -->
-        <div class="mirror-card">
-          <div class="mirror-name">Option 1: mbasic 免 JS 鏡像</div>
-          <div class="mirror-desc">Facebook 官方極簡行動版網頁，無複雜追蹤代碼與廣告，載入速度極快且常被防火牆豁免。</div>
-          <a href="#" id="link-mbasic" class="mirror-link-btn" target="_blank" rel="noopener noreferrer">在新分頁開啟</a>
-        </div>
-
-        <!-- Google Search Cache -->
-        <div class="mirror-card">
-          <div class="mirror-name">Option 2: Google 搜尋快照</div>
-          <div class="mirror-desc">透過 Google 搜尋的快照庫來讀取最新的粉專公開貼文，100% 不會被 FB 官方防火牆攔截。</div>
-          <a href="#" id="link-google" class="mirror-link-btn" target="_blank" rel="noopener noreferrer">在新分頁開啟</a>
-        </div>
-
-        <!-- Facebook RSS Feed -->
-        <div class="mirror-card">
-          <div class="mirror-name">Option 3: RSS 閱讀鏡像</div>
-          <div class="mirror-desc">透過第三方 RSS 生成服務與閱讀器，以純文字/卡片格式瀏覽粉專貼文動態。</div>
-          <a href="#" id="link-rss" class="mirror-link-btn" target="_blank" rel="noopener noreferrer">在新分頁開啟</a>
-        </div>
+      <div class="alert-box">
+        💡 <strong>使用提示：</strong>通道 A 是專門的 Facebook 代理通道；通道 B 則是通用代理。另外通道 C 為官方的輕量行動版，在某些封鎖較鬆的環境中可以直接使用且支援安全登入。
       </div>
 
-      <!-- Live Embed Frame -->
-      <div class="preview-panel">
-        <div class="preview-header">
-          <span class="preview-title" id="preview-title-text">內嵌網頁預覽區</span>
-          <div class="preview-actions">
-            <a href="#" id="btn-iframe-newtab" class="preview-btn" target="_blank" rel="noopener noreferrer">彈出外置瀏覽</a>
-          </div>
+      <div class="channels-grid">
+        <!-- Channel 1 -->
+        <div class="channel-card">
+          <div class="channel-name">👥 通道 A：Facebook 專屬代理</div>
+          <span class="channel-badge">最推薦</span>
+          <div class="channel-desc">專門為 Facebook 運作優化的代理網域，可繞過封鎖並載入首頁，支援登入與完整社群互動。</div>
+          <a href="https://www.facebook-unblocked.com/" class="launch-btn" target="_blank" rel="noopener noreferrer">開啟 Facebook 代理</a>
         </div>
-        
-        <div class="iframe-viewport" id="iframe-viewport">
-          <div class="preview-placeholder" id="preview-placeholder-text">
-            <p>請點選上方任一個鏡像選項的「在新分頁開啟」，即可繞過官方網域進行瀏覽！</p>
-            <p style="font-size: 0.8rem; color: var(--text-muted);">提示：部分行動網頁或快照設有防內嵌保護（X-Frame-Options），若內嵌載入不完整，建議直接點擊新分頁開啟按鈕。</p>
-          </div>
+
+        <!-- Channel 2 -->
+        <div class="channel-card">
+          <div class="channel-name">🛡️ 通道 B：BlockAway 代理</div>
+          <span class="channel-badge">穩定備用</span>
+          <div class="channel-desc">知名的萬用 Web Proxy，能流暢處理 Facebook 龐大的 JS 資源，支援安全帳號登入與瀏覽。</div>
+          <a href="https://www.blockaway.net/" class="launch-btn" target="_blank" rel="noopener noreferrer">開啟 BlockAway 代理</a>
+        </div>
+
+        <!-- Channel 3 -->
+        <div class="channel-card">
+          <div class="channel-name">📱 通道 C：mbasic 官方輕量網頁</div>
+          <span class="channel-badge">免代理首選</span>
+          <div class="channel-desc">Facebook 官方為低頻寬設計的網頁版本。因為是子網域且程式碼簡單，常常未被防火牆封鎖，可直接進行 HTTPS 安全登入。</div>
+          <a href="https://mbasic.facebook.com/" class="launch-btn" target="_blank" rel="noopener noreferrer">開啟 mbasic Facebook</a>
         </div>
       </div>
     </div>
 
     <!-- Footer -->
     <footer>
-      <p>&copy; 2026 Jump. Powered by decentralized mirror links.</p>
+      <p>&copy; 2026 Jump. Powered by unblocked web proxy gateways.</p>
     </footer>
   </div>
 
-  <!-- JavaScript logic -->
-  <script>
-    const searchForm = document.getElementById('search-form');
-    const usernameInput = document.getElementById('username-input');
-    const resultsContainer = document.getElementById('results-container');
-    const resultsTitle = document.getElementById('results-title');
-    
-    // Link elements
-    const linkMbasic = document.getElementById('link-mbasic');
-    const linkGoogle = document.getElementById('link-google');
-    const linkRss = document.getElementById('link-rss');
-    
-    // Iframe elements
-    const previewTitleText = document.getElementById('preview-title-text');
-    const btnIframeNewtab = document.getElementById('btn-iframe-newtab');
-    const iframeViewport = document.getElementById('iframe-viewport');
-    const previewPlaceholderText = document.getElementById('preview-placeholder-text');
-
-    searchForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const rawUser = usernameInput.value.trim();
-      if (!rawUser) return;
-      
-      const username = rawUser.replace(/^\//, '').replace(/\/$/, '');
-      
-      // Update result cards with unblocked links
-      const mbasicUrl = `https://mbasic.facebook.com/${username}`;
-      const googleUrl = `https://www.google.com/search?q=site:facebook.com+${username}`;
-      const rssUrl = `https://rss.app/feeds/facebook/${username}`; // example generator link
-      
-      linkMbasic.href = mbasicUrl;
-      linkGoogle.href = googleUrl;
-      linkRss.href = rssUrl;
-      
-      // Show results section
-      resultsTitle.textContent = `公開專頁 @${username} 的免封鎖瀏覽選項`;
-      resultsContainer.style.display = 'flex';
-      
-      // Configure iframe preview with mbasic
-      previewTitleText.textContent = `預覽載入中: @${username} (使用 mbasic FB)`;
-      btnIframeNewtab.href = mbasicUrl;
-      
-      // Inject iframe
-      iframeViewport.innerHTML = `
-        <iframe id="preview-iframe" src="${mbasicUrl}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
-      `;
-      
-      // Scroll to results
-      resultsContainer.scrollIntoView({ behavior: 'smooth' });
-    });
-  </script>
 </body>
 </html>

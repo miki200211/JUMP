@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JUMP Instagram — 獨立社群動態檢視器</title>
+  <meta name="description" content="免登入、免連線 Instagram 即可瀏覽公開個人檔案與貼文的安全瀏覽入口。">
+  
+  <!-- Font -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+  
+  <style>
+    :root {
+      --font-primary: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --bg-deep: #0b0914;
+      --bg-surface: rgba(22, 20, 38, 0.85);
+      --bg-card: rgba(30, 27, 52, 0.6);
+      --bg-card-hover: rgba(43, 38, 74, 0.8);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-primary: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --accent-pink: #d946ef;
+      --accent-gradient: linear-gradient(135deg, #f43f5e 0%, #d946ef 50%, #8b5cf6 100%);
+      --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-primary);
+      background-color: var(--bg-deep);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(244, 63, 94, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 45%);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1000px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .brand h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .brand p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Back Home Button */
+    .back-btn {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: var(--transition-smooth);
+    }
+
+    .back-btn:hover {
+      color: var(--text-primary);
+    }
+
+    /* Search Section */
+    .search-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .search-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .search-form {
+      display: flex;
+      gap: 0.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 0.75rem;
+      border-radius: 16px;
+      transition: var(--transition-smooth);
+    }
+
+    .search-form:focus-within {
+      border-color: var(--accent-pink);
+      box-shadow: 0 0 15px rgba(217, 70, 239, 0.15);
+    }
+
+    .search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: var(--font-primary);
+      font-size: 1rem;
+      padding: 0.5rem 0.25rem;
+    }
+
+    .search-btn {
+      background: var(--accent-gradient);
+      color: white;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 0.5rem 1.5rem;
+      border-radius: 12px;
+      font-family: var(--font-primary);
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: var(--transition-smooth);
+    }
+
+    .search-btn:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    /* Results Area */
+    .results-container {
+      display: none;
+      flex-direction: column;
+      gap: 1.5rem;
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .mirror-options-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-left: 3px solid var(--accent-pink);
+      padding-left: 0.75rem;
+    }
+
+    .mirror-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .mirror-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: var(--transition-smooth);
+    }
+
+    .mirror-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-pink);
+      transform: translateY(-2px);
+    }
+
+    .mirror-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .mirror-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      flex: 1;
+    }
+
+    .mirror-link-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent-gradient);
+      color: white;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.65rem;
+      border-radius: 10px;
+      text-align: center;
+      transition: var(--transition-smooth);
+    }
+
+    .mirror-link-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 4px 12px rgba(217, 70, 239, 0.2);
+    }
+
+    /* IFrame Preview container */
+    .preview-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 500px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .preview-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .preview-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .preview-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: var(--transition-smooth);
+    }
+
+    .preview-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: var(--accent-pink);
+    }
+
+    .iframe-viewport {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      background: #0d0c16;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .iframe-viewport iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .preview-placeholder {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .preview-placeholder p {
+      max-width: 450px;
+      font-size: 0.95rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand">
+        <h1>JUMP Instagram</h1>
+        <p>免登入帳號、免 IG 網址的安全社群檢視器</p>
+      </div>
+      
+      <a href="../" class="back-btn">⬅ 回首頁</a>
+    </header>
+
+    <!-- Search input -->
+    <div class="search-panel">
+      <h2 class="search-title">輸入公開帳號以產生免封鎖瀏覽入口</h2>
+      <form class="search-form" id="search-form" autocomplete="off">
+        <input 
+          type="text" 
+          id="username-input" 
+          class="search-input" 
+          placeholder="請輸入 Instagram 帳號 (例如：taylorswift)" 
+          required
+        >
+        <button type="submit" class="search-btn">送出</button>
+      </form>
+    </div>
+
+    <!-- Results -->
+    <div class="results-container" id="results-container">
+      <h3 class="mirror-options-title" id="results-title">公開帳號瀏覽選項</h3>
+      
+      <div class="mirror-grid">
+        <!-- Picuki -->
+        <div class="mirror-card">
+          <div class="mirror-name">Option 1: Picuki 鏡像</div>
+          <div class="mirror-desc">最熱門的 Instagram 瀏覽器，可流暢查看公開檔案、照片、影片與限時動態。</div>
+          <a href="#" id="link-picuki" class="mirror-link-btn" target="_blank" rel="noopener noreferrer">在新分頁開啟</a>
+        </div>
+
+        <!-- Imginn -->
+        <div class="mirror-card">
+          <div class="mirror-name">Option 2: Imginn 鏡像</div>
+          <div class="mirror-desc">極簡快速的網頁版 IG 閱讀器，支援下載圖片和觀看公開貼文，載入速度極快。</div>
+          <a href="#" id="link-imginn" class="mirror-link-btn" target="_blank" rel="noopener noreferrer">在新分頁開啟</a>
+        </div>
+
+        <!-- GreatFon -->
+        <div class="mirror-card">
+          <div class="mirror-name">Option 3: GreatFon 鏡像</div>
+          <div class="mirror-desc">提供快速查詢公開 IG 個人頁、貼文與熱門標籤的鏡像入口。</div>
+          <a href="#" id="link-greatfon" class="mirror-link-btn" target="_blank" rel="noopener noreferrer">在新分頁開啟</a>
+        </div>
+      </div>
+
+      <!-- Live Embed Frame -->
+      <div class="preview-panel">
+        <div class="preview-header">
+          <span class="preview-title" id="preview-title-text">內嵌網頁預覽區</span>
+          <div class="preview-actions">
+            <a href="#" id="btn-iframe-newtab" class="preview-btn" target="_blank" rel="noopener noreferrer">彈出外置瀏覽</a>
+          </div>
+        </div>
+        
+        <div class="iframe-viewport" id="iframe-viewport">
+          <div class="preview-placeholder" id="preview-placeholder-text">
+            <p>請點選上方任一個鏡像選項的「在新分頁開啟」，即可繞過官方網域進行瀏覽！</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">提示：部分第三方檢視器設有防內嵌保護（X-Frame-Options），若內嵌載入不完整，建議直接點擊新分頁開啟按鈕。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p>&copy; 2026 Jump. Powered by decentralized mirror links.</p>
+    </footer>
+  </div>
+
+  <!-- JavaScript logic -->
+  <script>
+    const searchForm = document.getElementById('search-form');
+    const usernameInput = document.getElementById('username-input');
+    const resultsContainer = document.getElementById('results-container');
+    const resultsTitle = document.getElementById('results-title');
+    
+    // Link elements
+    const linkPicuki = document.getElementById('link-picuki');
+    const linkImginn = document.getElementById('link-imginn');
+    const linkGreatfon = document.getElementById('link-greatfon');
+    
+    // Iframe elements
+    const previewTitleText = document.getElementById('preview-title-text');
+    const btnIframeNewtab = document.getElementById('btn-iframe-newtab');
+    const iframeViewport = document.getElementById('iframe-viewport');
+    const previewPlaceholderText = document.getElementById('preview-placeholder-text');
+
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const rawUser = usernameInput.value.trim();
+      if (!rawUser) return;
+      
+      // Clean username (remove @ if present)
+      const username = rawUser.replace(/^@/, '');
+      
+      // Update result cards with unblocked links
+      const picukiUrl = `https://www.picuki.com/profile/${username}`;
+      const imginnUrl = `https://imginn.com/${username}/`;
+      const greatfonUrl = `https://greatfon.com/v/${username}`;
+      
+      linkPicuki.href = picukiUrl;
+      linkImginn.href = imginnUrl;
+      linkGreatfon.href = greatfonUrl;
+      
+      // Show results section
+      resultsTitle.textContent = `公開帳號 @${username} 的免封鎖瀏覽選項`;
+      resultsContainer.style.display = 'flex';
+      
+      // Configure iframe preview with Picuki
+      previewTitleText.textContent = `預覽載入中: @${username} (使用 Picuki)`;
+      btnIframeNewtab.href = picukiUrl;
+      
+      // Inject iframe (we do it dynamically to avoid console warnings on startup)
+      iframeViewport.innerHTML = `
+        <iframe id="preview-iframe" src="${picukiUrl}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+      `;
+      
+      // Scroll to results
+      resultsContainer.scrollIntoView({ behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>

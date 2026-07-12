@@ -38,60 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
    * Parse profile/video/post links to their respective embeddable iframe URLs
    */
   function getEmbedUrl(platform, configUrl) {
-    if (!configUrl) return '';
-
     if (platform === 'youtube') {
-      let videoId = '';
-      // Watch URL: watch?v=VIDEO_ID
-      const watchMatch = configUrl.match(/[?&]v=([^&#]+)/);
-      if (watchMatch) {
-        videoId = watchMatch[1];
-      } else {
-        // Short URL: youtu.be/VIDEO_ID
-        const shortMatch = configUrl.match(/youtu\.be\/([^&#?]+)/);
-        if (shortMatch) {
-          videoId = shortMatch[1];
-        } else {
-          // Shorts URL: shorts/VIDEO_ID
-          const shortsMatch = configUrl.match(/shorts\/([^&#?]+)/);
-          if (shortsMatch) {
-            videoId = shortsMatch[1];
-          } else {
-            // Embed URL: embed/VIDEO_ID
-            const embedMatch = configUrl.match(/embed\/([^&#?]+)/);
-            if (embedMatch) {
-              videoId = embedMatch[1];
-            }
-          }
-        }
-      }
-
-      if (videoId) {
-        return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
-      }
-      
-      // Fallback if it is a channel link (YouTube doesn't allow profile iframes)
-      return 'https://www.youtube.com/embed/jfKfPfyJRdk';
+      return './www.youtube.com/index.html';
     }
-
-    if (platform === 'facebook') {
-      // Use official Meta Page Plugin URL
-      const encodedUrl = encodeURIComponent(configUrl);
-      return `https://www.facebook.com/plugins/page.php?href=${encodedUrl}&tabs=timeline&small_header=true&adapt_container_width=true&hide_cover=false&show_facepile=false&height=400`;
-    }
-
     if (platform === 'instagram') {
-      // Check if it's a post or reel path
-      const postMatch = configUrl.match(/\/(p|reel)\/([^/?#]+)/);
-      if (postMatch) {
-        const postId = postMatch[2];
-        return `https://www.instagram.com/p/${postId}/embed`;
-      }
-      
-      // Fallback post if configUrl is just a profile link (Instagram blocks profile iframes)
-      return 'https://www.instagram.com/p/CG4t_SgnV2x/embed';
+      return './www.instagram.com/index.html';
     }
-
+    if (platform === 'facebook') {
+      return './www.facebook.com/index.html';
+    }
     return configUrl;
   }
 
@@ -134,8 +89,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Configure external button links & action beacons
     if (externalLink) {
-      externalLink.href = linkInfo.url;
-      externalLink.textContent = `在 ${linkInfo.label || currentPlatform.toUpperCase()} 開啟`;
+      if (currentPlatform === 'youtube') {
+        externalLink.href = './www.youtube.com/index.html';
+        externalLink.textContent = `在 JUMP Tube 獨立播放器開啟`;
+      } else if (currentPlatform === 'instagram') {
+        externalLink.href = './www.instagram.com/index.html';
+        externalLink.textContent = `在 JUMP Instagram 檢視器開啟`;
+      } else if (currentPlatform === 'facebook') {
+        externalLink.href = './www.facebook.com/index.html';
+        externalLink.textContent = `在 JUMP Facebook 檢視器開啟`;
+      } else {
+        externalLink.href = linkInfo.url;
+        externalLink.textContent = `在 ${linkInfo.label || currentPlatform.toUpperCase()} 開啟`;
+      }
       
       // Click analytics tracker
       externalLink.onclick = () => {

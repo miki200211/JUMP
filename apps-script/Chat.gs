@@ -2,14 +2,15 @@
  * Fetch messages since timestamp.
  * If since is null, fetch the last 50 messages.
  */
-function fetchMessages(since) {
+function fetchMessages(since, fingerprint) {
   const ss = getSpreadsheet(MESSAGES_FILE);
   const sheet = ss.getSheets()[0];
   const lastRow = sheet.getLastRow();
   const serverTs = new Date().getTime();
+  const onlineCount = updateOnlineStatus(fingerprint);
   
   if (lastRow <= 1) {
-    return { messages: [], serverTs: serverTs };
+    return { messages: [], serverTs: serverTs, onlineCount: onlineCount };
   }
   
   // Optimization: Read only bottom range
@@ -38,7 +39,7 @@ function fetchMessages(since) {
     }
   }
   
-  return { messages: messages, serverTs: serverTs };
+  return { messages: messages, serverTs: serverTs, onlineCount: onlineCount };
 }
 
 /**

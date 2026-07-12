@@ -15,7 +15,8 @@ function doGet(e) {
     
     if (action === 'messages') {
       const since = e.parameter.since ? parseInt(e.parameter.since, 10) : null;
-      const result = fetchMessages(since);
+      const fingerprint = e.parameter.fingerprint || 'anonymous';
+      const result = fetchMessages(since, fingerprint);
       return jsonResponse(result);
     }
     

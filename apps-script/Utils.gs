@@ -86,3 +86,46 @@ function recordClick(linkId, e) {
     return { success: true };
   });
 }
+
+/**
+ * Update online status in CacheService and return count of active users.
+ */
+function updateOnlineStatus(fingerprint) {
+  if (!fingerprint || fingerprint === 'anonymous') return 1;
+  
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'online_users_list';
+  let onlineUsers = {};
+  
+  try {
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      onlineUsers = JSON.parse(cached);
+    }
+  } catch (err) {
+    // Ignore parse/fetch errors
+  }
+  
+  const now = new Date().getTime();
+  onlineUsers[fingerprint] = now;
+  
+  // Clean up users inactive for more than 15 seconds
+  const threshold = now - 15000;
+  const cleanedUsers = {};
+  let count = 0;
+  
+  for (const fp in onlineUsers) {
+    if (onlineUsers[fp] > threshold) {
+      cleanedUsers[fp] = onlineUsers[fp];
+      count++;
+    }
+  }
+  
+  try {
+    cache.put(cacheKey, JSON.stringify(cleanedUsers), 600); // cache for 10 minutes
+  } catch (err) {
+    // Fail silently
+  }
+  
+  return Math.max(1, count);
+}

@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let pollTimeoutId = null;
   let currentPollInterval = CONFIG.POLL_INTERVAL_MS;
   let sentMessageIds = new Set(); // To prevent duplicates from optimistic updates
+  let consecutiveErrors = 0; // To handle transient network glitches before backing off
 
   // Generate unique client fingerprint if not exists
   if (!fingerprint) {
@@ -239,14 +240,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const statusDot = document.querySelector('.user-avatar-dot');
-    const res = await api.getMessages(lastServerTs);
+    const onlineCountText = document.getElementById('online-count');
+    const res = await api.getMessages(lastServerTs, fingerprint);
     
     if (res && res.ok && res.data) {
+      consecutiveErrors = 0; // reset error count
       if (statusDot) {
         statusDot.classList.remove('offline', 'connecting');
         statusDot.title = '連線正常';
       }
-      // Reset exponential backoff
+      
+      // Update online count UI
+      if (onlineCountText) {
+        if (res.data.onlineCount && res.data.onlineCount > 0) {
+          onlineCountText.textContent = `🟢 ${res.data.onlineCount} 人在線`;
+          onlineCountText.style.display = 'inline';
+        } else {
+          onlineCountText.style.display = 'none';
+        }
+      }
+
+      // Reset polling interval
       currentPollInterval = CONFIG.POLL_INTERVAL_MS;
 
       const messages = res.data.messages || [];
@@ -262,17 +276,27 @@ document.addEventListener('DOMContentLoaded', () => {
         lastServerTs = res.data.serverTs;
       }
     } else {
+      consecutiveErrors++;
       if (statusDot) {
         statusDot.classList.add('offline');
         statusDot.classList.remove('connecting');
         statusDot.title = '連線失敗，正在重試...';
       }
-      // Exponential backoff on network errors
-      currentPollInterval = Math.min(
-        currentPollInterval * 1.5,
-        CONFIG.RETRY_DELAY_MAX_MS
-      );
-      console.warn(`Polling error. Backoff interval set to: ${currentPollInterval}ms`);
+      if (onlineCountText) {
+        onlineCountText.style.display = 'none';
+      }
+      
+      // Stable error retry system
+      if (consecutiveErrors <= 2) {
+        currentPollInterval = 2000; // Fast retry
+        console.warn(`Transient polling error. Quick retrying in 2s (Attempt ${consecutiveErrors})...`);
+      } else {
+        currentPollInterval = Math.min(
+          currentPollInterval * 1.5,
+          CONFIG.RETRY_DELAY_MAX_MS
+        );
+        console.warn(`Persistent polling error. Backoff interval set to: ${currentPollInterval}ms`);
+      }
     }
 
     scheduleNextPoll();

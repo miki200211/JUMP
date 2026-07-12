@@ -19,15 +19,14 @@ const api = {
     }
   },
 
-  /**
-   * Fetch chat messages since a specific timestamp.
-   * If since is null/omitted, fetches recent messages.
-   */
-  async getMessages(since) {
+  async getMessages(since, fingerprint) {
     try {
       let url = `${CONFIG.API_BASE}?action=messages`;
       if (since) {
         url += `&since=${since}`;
+      }
+      if (fingerprint) {
+        url += `&fingerprint=${fingerprint}`;
       }
       const response = await fetch(url);
       if (!response.ok) {

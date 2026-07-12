@@ -29,13 +29,11 @@
     </header>
 
     <!-- Top-Level Navigation Tabs -->
-    <nav class="main-nav" role="tablist">
-      <button class="main-nav-tab active" data-tab="chat-view" role="tab" aria-selected="true" aria-controls="chat-view">
-        💬 即時聊天
-      </button>
-      <button class="main-nav-tab" data-tab="media-view" role="tab" aria-selected="false" aria-controls="media-view">
-        📺 社群動態
-      </button>
+    <nav class="main-nav">
+      <a href="./" class="main-nav-tab active">💬 即時聊天</a>
+      <a href="./www.youtube.com/" class="main-nav-tab">📺 YouTube</a>
+      <a href="./www.instagram.com/" class="main-nav-tab">📸 Instagram</a>
+      <a href="./www.facebook.com/" class="main-nav-tab">👥 Facebook</a>
     </nav>
 
     <!-- Main View Content -->
@@ -64,34 +62,6 @@
           >
           <button type="submit">送出</button>
         </form>
-      </section>
-
-      <!-- View 2: Embedded Media Hub -->
-      <section id="media-view" class="panel view-panel" aria-labelledby="jump-section-title" style="display: none;">
-        <h2 class="panel-title" id="jump-section-title">
-          社群動態 <span>Media Hub</span>
-        </h2>
-        
-        <!-- Tab Navigation Buttons -->
-        <div class="media-tabs" role="tablist">
-          <button class="media-tab active" data-platform="youtube" role="tab" aria-selected="true" aria-controls="media-viewport">YouTube</button>
-          <button class="media-tab" data-platform="instagram" role="tab" aria-selected="false" aria-controls="media-viewport">Instagram</button>
-          <button class="media-tab" data-platform="facebook" role="tab" aria-selected="false" aria-controls="media-viewport">Facebook</button>
-        </div>
-
-        <!-- Viewport Container for IFrame Embeds -->
-        <div class="media-viewport-container">
-          <div id="media-viewport" class="media-viewport">
-            <!-- IFrame dynamically loaded here -->
-          </div>
-        </div>
-
-        <!-- External Link Button (For deep linking/app launches) -->
-        <div class="media-footer">
-          <a id="external-app-link" class="app-btn" href="#" target="_blank" rel="noopener noreferrer">
-            開啟官方應用程式
-          </a>
-        </div>
       </section>
 
     </main>
@@ -123,9 +93,8 @@
   </div>
 
   <!-- JavaScript Modules -->
-  <script src="assets/js/config.js?v=1.0.2"></script>
-  <script src="assets/js/api.js?v=1.0.2"></script>
-  <script src="assets/js/jump.js?v=1.0.2"></script>
-  <script src="assets/js/chat.js?v=1.0.2"></script>
+  <script src="assets/js/config.js?v=1.0.3"></script>
+  <script src="assets/js/api.js?v=1.0.3"></script>
+  <script src="assets/js/chat.js?v=1.0.3"></script>
 </body>
 </html>

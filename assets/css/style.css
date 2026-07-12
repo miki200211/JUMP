@@ -163,6 +163,8 @@ header {
   cursor: pointer;
   position: relative;
   transition: var(--transition-smooth);
+  text-decoration: none;
+  display: inline-block;
 }
 
 .main-nav-tab:hover {

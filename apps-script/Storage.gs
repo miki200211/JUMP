@@ -1,36 +1,10 @@
 const FOLDER_NAME = 'JumpApp';
 const MESSAGES_FILE = 'messages';
-const ANALYTICS_FILE = 'analytics';
-const CONFIG_FILE = 'config.json';
+const UPLOADS_FOLDER_NAME = 'uploads';
 
-const DEFAULT_CONFIG = {
-  "links": [
-    {
-      "id": "youtube",
-      "label": "YouTube 頻道",
-      "url": "https://www.youtube.com/@example",
-      "appScheme": "vnd.youtube://www.youtube.com/@example",
-      "icon": "yt.svg",
-      "enabled": true
-    },
-    {
-      "id": "instagram",
-      "label": "Instagram",
-      "url": "https://www.instagram.com/example",
-      "appScheme": "instagram://user?username=example",
-      "icon": "ig.svg",
-      "enabled": true
-    },
-    {
-      "id": "facebook",
-      "label": "Facebook 粉專",
-      "url": "https://www.facebook.com/example",
-      "appScheme": "fb://page/123456789",
-      "icon": "fb.svg",
-      "enabled": true
-    }
-  ]
-};
+// Message sheet columns. Old sheets only have the first five; reads stay
+// tolerant because the extra columns come back as '' on legacy rows.
+const MESSAGE_HEADERS = ['id', 'ts', 'nickname', 'text', 'clientHash', 'type', 'mediaUrl'];
 
 /**
  * Initialize workspace files and folders if not exist.
@@ -44,16 +18,13 @@ function initWorkspace() {
   } else {
     folder = DriveApp.createFolder(FOLDER_NAME);
   }
-  
+
   // Create messages sheet if missing
-  getOrCreateSpreadsheet(folder, MESSAGES_FILE, ['id', 'ts', 'nickname', 'text', 'clientHash']);
-  
-  // Create analytics sheet if missing
-  getOrCreateSpreadsheet(folder, ANALYTICS_FILE, ['ts', 'linkId', 'referrer', 'userAgent']);
-  
-  // Create config.json if missing
-  getOrCreateJsonFile(folder, CONFIG_FILE, DEFAULT_CONFIG);
-  
+  getOrCreateSpreadsheet(folder, MESSAGES_FILE, MESSAGE_HEADERS);
+
+  // Create uploads subfolder if missing
+  getOrCreateSubfolder(folder, UPLOADS_FOLDER_NAME);
+
   return folder;
 }
 
@@ -66,12 +37,12 @@ function getOrCreateSpreadsheet(folder, name, headers) {
     const file = files.next();
     return SpreadsheetApp.openById(file.getId());
   }
-  
+
   const ss = SpreadsheetApp.create(name);
   const file = DriveApp.getFileById(ss.getId());
-  
+
   file.moveTo(folder);
-  
+
   const sheet = ss.getSheets()[0];
   sheet.appendRow(headers);
   sheet.setFrozenRows(1);
@@ -79,58 +50,61 @@ function getOrCreateSpreadsheet(folder, name, headers) {
 }
 
 /**
- * Helper to get or create a JSON file inside a specific folder.
+ * Helper to get or create a subfolder inside a parent folder.
  */
-function getOrCreateJsonFile(folder, name, defaultData) {
-  const files = folder.getFilesByName(name);
-  if (files.hasNext()) {
-    return files.next();
+function getOrCreateSubfolder(parent, name) {
+  const folders = parent.getFoldersByName(name);
+  if (folders.hasNext()) {
+    return folders.next();
   }
-  
-  return folder.createFile(name, JSON.stringify(defaultData, null, 2), MimeType.PLAIN_TEXT);
+  return parent.createFolder(name);
+}
+
+/**
+ * Get the app root folder, initializing the workspace on first run.
+ */
+function getAppFolder() {
+  const folders = DriveApp.getFoldersByName(FOLDER_NAME);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return initWorkspace();
+}
+
+/**
+ * Get the folder holding uploaded chat images.
+ */
+function getUploadsFolder() {
+  return getOrCreateSubfolder(getAppFolder(), UPLOADS_FOLDER_NAME);
 }
 
 /**
  * Get spreadsheet by name. Initializes workspace if folder not found.
  */
 function getSpreadsheet(name) {
-  let folders = DriveApp.getFoldersByName(FOLDER_NAME);
-  let folder;
-  if (!folders.hasNext()) {
-    folder = initWorkspace();
-  } else {
-    folder = folders.next();
-  }
-  
+  const folder = getAppFolder();
+
   const files = folder.getFilesByName(name);
   if (files.hasNext()) {
     return SpreadsheetApp.openById(files.next().getId());
   }
-  
+
   // If folder exists but file doesn't, initialize
   initWorkspace();
   return SpreadsheetApp.openById(folder.getFilesByName(name).next().getId());
 }
 
 /**
- * Get JSON config contents.
+ * One-time migration: run manually from the Apps Script editor after
+ * upgrading, to label the new 'type' / 'mediaUrl' columns on an existing
+ * messages sheet. Reads work without it; this is purely cosmetic.
  */
-function getConfigJsonContent() {
-  let folders = DriveApp.getFoldersByName(FOLDER_NAME);
-  let folder;
-  if (!folders.hasNext()) {
-    folder = initWorkspace();
-  } else {
-    folder = folders.next();
+function migrateSchemaHeaders() {
+  const sheet = getSpreadsheet(MESSAGES_FILE).getSheets()[0];
+  if (!sheet.getRange(1, 6).getValue()) {
+    sheet.getRange(1, 6).setValue('type');
   }
-  
-  const files = folder.getFilesByName(CONFIG_FILE);
-  if (files.hasNext()) {
-    const file = files.next();
-    return file.getAs('text/plain').getDataAsString();
+  if (!sheet.getRange(1, 7).getValue()) {
+    sheet.getRange(1, 7).setValue('mediaUrl');
   }
-  
-  initWorkspace();
-  const file = folder.getFilesByName(CONFIG_FILE).next();
-  return file.getAs('text/plain').getDataAsString();
 }

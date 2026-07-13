@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <title>Jump — 社群入口與即時聊天</title>
-  <meta name="description" content="一站式社群平台跳轉入口與即時匿名聊天室，提供 YouTube、Instagram 與 Facebook 快速連結與安全互動體驗。">
-  
+
+  <title>JUMP 聊天室 — 即時匿名聊天</title>
+  <meta name="description" content="JUMP 即時匿名聊天室：支援貼圖、圖片與 GIF 分享、超連結，並可查看目前在線上的成員。">
+
   <!-- Styling -->
-  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/style.css?v=2.0.0">
 </head>
 <body>
 
@@ -16,61 +16,62 @@
     <!-- Header -->
     <header>
       <div class="brand-section">
-        <h1>JUMP</h1>
-        <p>快速連結平台與即時社群互動</p>
+        <h1>JUMP 聊天室</h1>
+        <p>即時匿名聊天・貼圖・圖片・GIF</p>
       </div>
-      
-      <!-- User Status & Nickname Display -->
+
+      <!-- User Status, Nickname & Online Users -->
       <div class="user-status-panel">
         <div class="user-avatar-dot"></div>
         <span id="nickname-display">匿名訪客</span>
-        <span id="online-count" style="margin: 0 0.25rem; font-size: 0.85rem; color: var(--text-secondary); display: none;"></span>
+        <button type="button" id="online-btn" aria-haspopup="true" aria-expanded="false" hidden></button>
         <button id="change-nickname-btn" aria-label="修改暱稱">修改</button>
+
+        <div id="online-popover" hidden>
+          <div class="online-popover-title">🟢 在線上的人</div>
+          <ul id="online-list"></ul>
+        </div>
       </div>
     </header>
 
-    <!-- Top-Level Navigation Tabs -->
-    <nav class="main-nav">
-      <a href="./" class="main-nav-tab active">💬 即時聊天</a>
-      <a href="./www.youtube.com/" class="main-nav-tab">📺 YouTube</a>
-      <a href="./www.instagram.com/" class="main-nav-tab">📸 Instagram</a>
-      <a href="./www.facebook.com/" class="main-nav-tab">👥 Facebook</a>
-    </nav>
-
-    <!-- Main View Content -->
+    <!-- Chat Room -->
     <main class="main-content">
-      
-      <!-- View 1: Interactive Chat Room -->
-      <section id="chat-view" class="panel chat-panel view-panel active" aria-labelledby="chat-section-title">
-        <h2 class="panel-title" id="chat-section-title">
-          即時聊天室 <span>Live Chat</span>
-        </h2>
-        
+      <section class="panel chat-panel" aria-label="即時聊天室">
+
         <!-- Messages Board -->
         <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
           <!-- Dynamic Chat Bubbles Rendered via chat.js -->
         </div>
-        
-        <!-- Input Toolbar -->
+
+        <!-- Composer -->
         <form class="chat-input-bar" id="chat-form" autocomplete="off">
-          <input 
-            type="text" 
-            id="chat-input" 
-            placeholder="輸入訊息..." 
-            maxlength="500" 
-            required 
+
+          <!-- Emoji / Sticker Popover -->
+          <div id="composer-popover" hidden>
+            <div class="composer-tabs" role="tablist">
+              <button type="button" class="composer-tab active" data-tab="emoji">😊 表情</button>
+              <button type="button" class="composer-tab" data-tab="sticker">🧩 貼圖</button>
+            </div>
+            <div class="emoji-grid" id="emoji-grid"></div>
+            <div class="sticker-grid" id="sticker-grid" hidden></div>
+          </div>
+
+          <button type="button" class="composer-btn" id="emoji-btn" title="插入表情" aria-label="插入表情">😊</button>
+          <button type="button" class="composer-btn" id="sticker-btn" title="傳送貼圖" aria-label="傳送貼圖">🧩</button>
+          <label class="composer-btn" for="image-input" id="image-btn" title="傳送圖片或 GIF" aria-label="傳送圖片或 GIF">🖼️</label>
+          <input type="file" id="image-input" accept="image/png,image/jpeg,image/gif,image/webp" hidden>
+
+          <textarea
+            id="chat-input"
+            placeholder="輸入訊息...（Enter 送出）"
+            rows="1"
+            maxlength="500"
             aria-label="訊息內容"
-          >
-          <button type="submit">送出</button>
+          ></textarea>
+          <button type="submit" id="send-btn">送出</button>
         </form>
       </section>
-
     </main>
-
-    <!-- Footer -->
-    <footer>
-      <p>&copy; 2026 Jump. Deployed statically via GitHub Pages and powered by Google Apps Script.</p>
-    </footer>
   </div>
 
   <!-- Nickname Entry Dialog (Modal Overlay) -->
@@ -79,13 +80,13 @@
       <button class="modal-close-x" id="nickname-close-btn" aria-label="關閉視窗">&times;</button>
       <h2 id="modal-title">設定您的暱稱</h2>
       <p>請輸入一個在聊天室中顯示的名稱（1-20 字元）</p>
-      
+
       <form id="nickname-form">
-        <input 
-          type="text" 
-          id="nickname-input" 
-          placeholder="例如：小明" 
-          maxlength="20" 
+        <input
+          type="text"
+          id="nickname-input"
+          placeholder="例如：小明"
+          maxlength="20"
           required
         >
         <button type="submit">確定</button>
@@ -93,9 +94,19 @@
     </div>
   </div>
 
+  <!-- Image Lightbox -->
+  <div class="modal-overlay" id="lightbox-overlay" role="dialog" aria-modal="true" aria-label="圖片預覽">
+    <figure class="lightbox-content">
+      <button class="modal-close-x" id="lightbox-close-btn" aria-label="關閉圖片">&times;</button>
+      <img id="lightbox-image" src="" alt="圖片預覽">
+      <a id="lightbox-open-link" href="#" target="_blank" rel="noopener noreferrer">在新分頁開啟 ↗</a>
+    </figure>
+  </div>
+
   <!-- JavaScript Modules -->
-  <script src="assets/js/config.js?v=1.0.3"></script>
-  <script src="assets/js/api.js?v=1.0.3"></script>
-  <script src="assets/js/chat.js?v=1.0.3"></script>
+  <script src="assets/js/config.js?v=2.0.0"></script>
+  <script src="assets/js/emoji.js?v=2.0.0"></script>
+  <script src="assets/js/api.js?v=2.0.0"></script>
+  <script src="assets/js/chat.js?v=2.0.0"></script>
 </body>
 </html>

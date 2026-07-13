@@ -1,32 +1,20 @@
 /**
  * API Service wrapper for Google Apps Script Web App endpoints.
- * Handles AJAX requests and click analytics beaconing.
+ * POST bodies use Content-Type text/plain so requests stay CORS "simple
+ * requests" — Apps Script cannot answer a preflight OPTIONS.
  */
 const api = {
-  /**
-   * Fetch configured redirect links
-   */
-  async getLinks() {
-    try {
-      const response = await fetch(`${CONFIG.API_BASE}?action=links`);
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-      return await response.json();
-    } catch (err) {
-      console.error('getLinks error:', err);
-      return { ok: false, error: { code: 'NETWORK_ERROR', message: err.toString() } };
-    }
-  },
-
-  async getMessages(since, fingerprint) {
+  async getMessages(since, fingerprint, nickname) {
     try {
       let url = `${CONFIG.API_BASE}?action=messages`;
       if (since) {
         url += `&since=${since}`;
       }
       if (fingerprint) {
-        url += `&fingerprint=${fingerprint}`;
+        url += `&fingerprint=${encodeURIComponent(fingerprint)}`;
+      }
+      if (nickname) {
+        url += `&nickname=${encodeURIComponent(nickname)}`;
       }
       const response = await fetch(url);
       if (!response.ok) {
@@ -40,16 +28,18 @@ const api = {
   },
 
   /**
-   * Send a chat message.
-   * Uses text/plain to bypass CORS preflight checks.
+   * Send a chat message. type: 'text' | 'image' | 'sticker'.
+   * mediaUrl is only set on image messages (URL returned by uploadImage).
    */
-  async sendMessage(nickname, text, fingerprint, messageId) {
+  async sendMessage(nickname, text, fingerprint, messageId, type = 'text', mediaUrl = '') {
     try {
       const payload = {
         action: 'send',
         id: messageId,
         nickname: nickname,
         text: text,
+        type: type,
+        mediaUrl: mediaUrl,
         fingerprint: fingerprint
       };
 
@@ -70,23 +60,31 @@ const api = {
   },
 
   /**
-   * Track link clicks asynchronously without blocking navigation.
-   * Uses navigator.sendBeacon with text/plain body.
+   * Upload an image/GIF as base64 (without the data: prefix).
+   * Returns { ok, data: { fileId, url, bytes } } on success.
    */
-  trackClick(linkId) {
+  async uploadImage(base64Data, mimeType, fingerprint) {
     try {
-      const payload = JSON.stringify({
-        action: 'track',
-        linkId: linkId,
-        referrer: document.referrer,
-        userAgent: navigator.userAgent
+      const payload = {
+        action: 'upload',
+        data: base64Data,
+        mimeType: mimeType,
+        fingerprint: fingerprint
+      };
+
+      const response = await fetch(CONFIG.API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
       });
 
-      const blob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
-      return navigator.sendBeacon(CONFIG.API_BASE, blob);
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      return await response.json();
     } catch (err) {
-      console.error('trackClick error:', err);
-      return false;
+      console.error('uploadImage error:', err);
+      return { ok: false, error: { code: 'NETWORK_ERROR', message: err.toString() } };
     }
   }
 };

@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let onlineState = { count: 0, users: [] };
 
   const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
 
   // Generate unique client fingerprint if not exists
   if (!fingerprint) {
@@ -138,6 +139,10 @@ document.addEventListener('DOMContentLoaded', () => {
       `<img class="chat-image" src="${safeSrc}" alt="圖片" loading="lazy" referrerpolicy="no-referrer"></a>`;
   }
 
+  function videoEmbedHtml(safeSrc) {
+    return `<video class="chat-video" src="${safeSrc}" controls preload="metadata" playsinline></video>`;
+  }
+
   /**
    * Render a single message bubble into the container.
    * localPreviewUrl: blob: URL for our own optimistic image bubbles only —
@@ -149,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const type = msg.type === 'image' || msg.type === 'sticker' ? msg.type : 'text';
+    const type = msg.type === 'image' || msg.type === 'video' || msg.type === 'sticker' ? msg.type : 'text';
     const isOwnMessage = msg.nickname === nickname;
     const msgElement = document.createElement('div');
     msgElement.id = `msg-${msg.id}`;
@@ -167,6 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // renders as a placeholder instead of an <img>.
       const src = localPreviewUrl || (MEDIA_URL_RE.test(msg.mediaUrl || '') ? msg.mediaUrl : '');
       bodyHtml = src ? imageEmbedHtml(escapeHTML(src)) : `<div class="message-text">[圖片]</div>`;
+      if (msg.text) {
+        bodyHtml += `<div class="message-text">${renderRichText(msg.text)}</div>`;
+      }
+    } else if (type === 'video') {
+      const src = localPreviewUrl || (MEDIA_URL_RE.test(msg.mediaUrl || '') ? msg.mediaUrl : '');
+      bodyHtml = src ? videoEmbedHtml(escapeHTML(src)) : `<div class="message-text">[影片]</div>`;
       if (msg.text) {
         bodyHtml += `<div class="message-text">${renderRichText(msg.text)}</div>`;
       }
@@ -425,24 +436,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!requireNickname()) return;
 
     const mime = (file.type || '').toLowerCase();
-    if (SUPPORTED_IMAGE_TYPES.indexOf(mime) === -1) {
-      alert('僅支援 JPG / PNG / GIF / WebP 圖片');
+    const isImage = SUPPORTED_IMAGE_TYPES.indexOf(mime) !== -1;
+    const isVideo = SUPPORTED_VIDEO_TYPES.indexOf(mime) !== -1;
+
+    if (!isImage && !isVideo) {
+      alert('僅支援 JPG / PNG / GIF / WebP 圖片與 MP4 / WebM / OGG 影片');
       return;
     }
 
     let prepared;
     try {
-      prepared = await prepareImageForUpload(file, mime);
+      if (isImage) {
+        prepared = await prepareImageForUpload(file, mime);
+      } else {
+        if (file.size > CONFIG.UPLOAD_MAX_RAW_BYTES) {
+          throw userError('影片檔案過大（上限 4MB），請換一個。');
+        }
+        prepared = {
+          base64: await blobToBase64(file),
+          mimeType: mime,
+          previewBlob: file
+        };
+      }
     } catch (err) {
-      alert(err && err.userMessage ? err.userMessage : '圖片處理失敗，請換一張試試。');
+      alert(err && err.userMessage ? err.userMessage : '檔案處理失敗，請換一個試試。');
       return;
     }
 
     // Optimistic bubble with a local blob preview + spinner overlay
     const previewUrl = URL.createObjectURL(prepared.previewBlob);
     const tempId = createTempId();
+    const type = isVideo ? 'video' : 'image';
     renderMessage(
-      { id: tempId, ts: Date.now(), nickname: nickname, text: '', type: 'image', mediaUrl: '' },
+      { id: tempId, ts: Date.now(), nickname: nickname, text: '', type: type, mediaUrl: '' },
       true,
       previewUrl
     );
@@ -462,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (code === 'PAYLOAD_TOO_LARGE') {
         alert('檔案過大（上限 4MB）。');
       } else if (code === 'UNSUPPORTED_TYPE') {
-        alert('僅支援 JPG / PNG / GIF / WebP 圖片');
+        alert('僅支援 JPG / PNG / GIF / WebP 圖片與 MP4 / WebM / OGG 影片');
       }
       return;
     }
@@ -471,13 +497,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (icon) icon.textContent = '...';
     const mediaUrl = uploadRes.data.url;
 
-    const sendRes = await api.sendMessage(nickname, '', fingerprint, tempId, 'image', mediaUrl);
+    const sendRes = await api.sendMessage(nickname, '', fingerprint, tempId, type, mediaUrl);
     if (sendRes && sendRes.ok && sendRes.data) {
       finalizeSentBubble(bubble, sendRes.data, tempId);
       // Keep showing the local preview (instant, already decoded); just point
       // the link/lightbox at the hosted copy for this session.
-      const link = bubble ? bubble.querySelector('a.chat-image-link') : null;
-      if (link) link.href = mediaUrl;
+      if (type === 'image') {
+        const link = bubble ? bubble.querySelector('a.chat-image-link') : null;
+        if (link) link.href = mediaUrl;
+      } else {
+        const video = bubble ? bubble.querySelector('video.chat-video') : null;
+        if (video) video.src = mediaUrl;
+      }
       currentPollInterval = CONFIG.POLL_INTERVAL_MS;
     } else {
       markBubbleFailed(bubble, '⚠️ 傳送失敗');
@@ -584,12 +615,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Upload entry point 2: paste image from clipboard
+  // Upload entry point 2: paste image/video from clipboard
   if (chatInput) {
     chatInput.addEventListener('paste', (e) => {
       const items = (e.clipboardData && e.clipboardData.items) || [];
       for (const item of Array.from(items)) {
-        if (item.kind === 'file' && item.type.indexOf('image/') === 0) {
+        if (item.kind === 'file' && (item.type.indexOf('image/') === 0 || item.type.indexOf('video/') === 0)) {
           e.preventDefault();
           const file = item.getAsFile();
           if (file) handleImageFile(file);

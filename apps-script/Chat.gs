@@ -1,13 +1,17 @@
-// Message types the chat accepts. 'image' rows carry a mediaUrl that must
+// Message types the chat accepts. 'image' or 'video' rows carry a mediaUrl that must
 // point at a file this backend uploaded itself (see MEDIA_URL_RE).
-const MESSAGE_TYPES = { text: true, image: true, sticker: true };
+const MESSAGE_TYPES = { text: true, image: true, video: true, sticker: true };
 const MEDIA_URL_RE = /^https:\/\/lh3\.googleusercontent\.com\/d\/[A-Za-z0-9_-]{20,100}$/;
 
 const UPLOAD_MIME_EXT = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/gif': 'gif',
-  'image/webp': 'webp'
+  'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/ogg': 'ogg',
+  'video/quicktime': 'mov'
 };
 // 4MB of raw bytes ≈ 5.6M base64 characters
 const UPLOAD_MAX_BASE64_CHARS = 5600000;
@@ -79,15 +83,15 @@ function addMessage(payload) {
   if (type === 'sticker' && (text.length === 0 || text.length > 16)) {
     throw new Error('INVALID_TEXT: Sticker must be between 1 and 16 characters.');
   }
-  if (type === 'image') {
+  if (type === 'image' || type === 'video') {
     if (!MEDIA_URL_RE.test(mediaUrl)) {
-      throw new Error('INVALID_MEDIA_URL: Image messages require a URL returned by the upload action.');
+      throw new Error('INVALID_MEDIA_URL: Image or video messages require a URL returned by the upload action.');
     }
     if (text.length > 500) {
       throw new Error('INVALID_TEXT: Caption must be at most 500 characters.');
     }
   } else if (mediaUrl) {
-    throw new Error('INVALID_MEDIA_URL: mediaUrl is only allowed on image messages.');
+    throw new Error('INVALID_MEDIA_URL: mediaUrl is only allowed on image or video messages.');
   }
 
   const msgId = payload.id || Utilities.getUuid();
@@ -131,13 +135,13 @@ function uploadImage(payload) {
   }
   const ext = UPLOAD_MIME_EXT[mimeType];
   if (!ext) {
-    throw new Error('UNSUPPORTED_TYPE: Only JPG, PNG, GIF and WebP images are allowed.');
+    throw new Error('UNSUPPORTED_TYPE: Only JPG, PNG, GIF, WebP images and MP4, WebM, OGG, MOV videos are allowed.');
   }
   if (typeof data !== 'string' || data.length === 0) {
-    throw new Error('MISSING_DATA: Image data is empty.');
+    throw new Error('MISSING_DATA: Upload data is empty.');
   }
   if (data.length > UPLOAD_MAX_BASE64_CHARS) {
-    throw new Error('PAYLOAD_TOO_LARGE: Image exceeds the 4MB limit.');
+    throw new Error('PAYLOAD_TOO_LARGE: File exceeds the 4MB limit.');
   }
 
   checkUploadRateLimit(fingerprint);
@@ -146,15 +150,21 @@ function uploadImage(payload) {
   try {
     bytes = Utilities.base64Decode(data);
   } catch (err) {
-    throw new Error('INVALID_DATA: Image data is not valid base64.');
+    throw new Error('INVALID_DATA: Data is not valid base64.');
   }
 
   assertMagicBytes(bytes, mimeType);
 
   // Filename is server-generated; client filenames are never accepted.
-  const blob = Utilities.newBlob(bytes, mimeType, 'img_' + new Date().getTime() + '.' + ext);
+  const isVideo = mimeType.indexOf('video/') === 0;
+  const prefix = isVideo ? 'vid_' : 'img_';
+  const blob = Utilities.newBlob(bytes, mimeType, prefix + new Date().getTime() + '.' + ext);
   const file = getUploadsFolder().createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (err) {
+    console.warn('setSharing failed (possible Workspace domain policy restriction): ' + err.toString());
+  }
 
   return {
     fileId: file.getId(),
@@ -182,10 +192,16 @@ function assertMagicBytes(bytes, mimeType) {
     } else if (mimeType === 'image/webp') {
       ok = at(0) === 0x52 && at(1) === 0x49 && at(2) === 0x46 && at(3) === 0x46 &&
            at(8) === 0x57 && at(9) === 0x45 && at(10) === 0x42 && at(11) === 0x50;
+    } else if (mimeType === 'video/mp4' || mimeType === 'video/quicktime') {
+      ok = at(4) === 0x66 && at(5) === 0x74 && at(6) === 0x79 && at(7) === 0x70; // 'ftyp'
+    } else if (mimeType === 'video/webm') {
+      ok = at(0) === 0x1A && at(1) === 0x45 && at(2) === 0xDF && at(3) === 0xA3; // WebM EBML
+    } else if (mimeType === 'video/ogg') {
+      ok = at(0) === 0x4F && at(1) === 0x67 && at(2) === 0x67 && at(3) === 0x53; // 'OggS'
     }
   }
 
   if (!ok) {
-    throw new Error('UNSUPPORTED_TYPE: File content does not match its declared image type.');
+    throw new Error('UNSUPPORTED_TYPE: File content does not match its declared type.');
   }
 }

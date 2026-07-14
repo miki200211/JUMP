@@ -360,10 +360,11 @@ header {
 }
 
 /* Sticker messages: big glyph, no bubble chrome */
-.message-type-sticker .message-bubble {
-  background: transparent;
-  border: none;
-  box-shadow: none;
+.message-type-sticker .message-bubble,
+.message-type-sticker.message-own .message-bubble {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   padding: 0.15rem 0.35rem;
 }
 
@@ -394,6 +395,14 @@ header {
   max-height: 280px;
   border-radius: 12px;
   cursor: zoom-in;
+}
+
+.chat-video {
+  display: block;
+  max-width: min(280px, 62vw);
+  max-height: 280px;
+  border-radius: 12px;
+  background: #000;
 }
 
 /* Upload-in-progress overlay */

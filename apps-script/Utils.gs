@@ -82,7 +82,7 @@ function checkUploadRateLimit(fingerprint) {
   cache.put(cacheKey, '1', 10);
 }
 
-const ONLINE_WINDOW_MS = 15000;   // presence expires after 15s without a poll
+const ONLINE_WINDOW_MS = 30000;   // presence expires after 30s without a poll
 const ONLINE_MAP_MAX = 500;       // hard cap on stored fingerprints (CacheService value limit)
 const ONLINE_LIST_MAX = 50;       // max nicknames returned to clients
 

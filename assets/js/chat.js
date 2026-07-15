@@ -876,11 +876,17 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       consecutiveErrors++;
       if (statusDot) {
-        statusDot.classList.add('offline');
-        statusDot.classList.remove('connecting');
-        statusDot.title = '連線失敗，正在重試...';
+        if (consecutiveErrors >= 3) {
+          statusDot.classList.add('offline');
+          statusDot.classList.remove('connecting');
+          statusDot.title = '連線失敗，請檢查網路連線。';
+          setOnlineUnavailable();
+        } else {
+          statusDot.classList.add('connecting');
+          statusDot.classList.remove('offline');
+          statusDot.title = `連線不穩定，正在重試 (第 ${consecutiveErrors} 次)...`;
+        }
       }
-      setOnlineUnavailable();
 
       // Stable error retry system
       if (consecutiveErrors <= 2) {

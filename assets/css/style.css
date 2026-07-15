@@ -74,6 +74,8 @@ body {
 }
 
 header {
+  position: relative;
+  z-index: 10;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -81,6 +83,17 @@ header {
   gap: 0.75rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-color);
+}
+
+.brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.online-status-wrapper {
+  position: relative;
+  display: inline-block;
 }
 
 .brand-section h1 {
@@ -156,19 +169,28 @@ header {
 
 #online-btn {
   color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 50px;
+  padding: 0.25rem 0.6rem;
 }
 
-#change-nickname-btn:hover,
-#online-btn:hover {
+#change-nickname-btn:hover {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.05);
+}
+
+#online-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* --- Online Users Popover --- */
 #online-popover {
   position: absolute;
-  top: calc(100% + 12px);
-  right: 0;
+  top: calc(100% + 8px);
+  left: 0;
   min-width: 200px;
   max-width: 260px;
   background: rgba(22, 20, 38, 0.97);

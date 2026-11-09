@@ -39,6 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const nicknameInput = document.getElementById('nickname-input');
   const nicknameCloseBtn = document.getElementById('nickname-close-btn');
 
+  // Notification Elements
+  const notifyBtn = document.getElementById('notify-btn');
+
   // Application State
   let nickname = localStorage.getItem('chat_nickname') || '';
   let fingerprint = localStorage.getItem('chat_fingerprint') || '';
@@ -48,6 +51,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let sentMessageIds = new Set(); // To prevent duplicates from optimistic updates
   let consecutiveErrors = 0; // To handle transient network glitches before backing off
   let onlineState = { count: 0, users: [] };
+  let isInitialLoad = true;
+  let notificationsEnabled = localStorage.getItem('jump_notify_enabled') !== 'false';
+  let audioCtx = null;
+  let titleFlashInterval = null;
+  const originalTitle = document.title;
+  const BACKGROUND_POLL_INTERVAL_MS = 10000;
 
   const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
@@ -837,11 +846,153 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ==================== Audio & Notifications ====================
+
+  function getAudioContext() {
+    if (!audioCtx) {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtxClass) {
+        audioCtx = new AudioCtxClass();
+      }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  // Pure Web Audio synthesized notification chime (雙音階柔和提示音：D5 -> A5)
+  function playNotificationSound() {
+    if (!notificationsEnabled) return;
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.setValueAtTime(880, now + 0.1); // A5
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.22, now + 0.02);
+      gain.gain.setValueAtTime(0.22, now + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.45);
+    } catch (err) {
+      console.warn('Audio notification error:', err);
+    }
+  }
+
+  function startTitleFlashing() {
+    if (titleFlashInterval) return;
+    let isFlashing = true;
+    titleFlashInterval = setInterval(() => {
+      document.title = isFlashing ? `(新訊息) ${originalTitle}` : originalTitle;
+      isFlashing = !isFlashing;
+    }, 1000);
+  }
+
+  function stopTitleFlashing() {
+    if (titleFlashInterval) {
+      clearInterval(titleFlashInterval);
+      titleFlashInterval = null;
+    }
+    document.title = originalTitle;
+  }
+
+  window.addEventListener('focus', stopTitleFlashing);
+
+  // User gesture to unlock Web Audio context
+  const unlockAudioGesture = () => {
+    getAudioContext();
+  };
+  window.addEventListener('click', unlockAudioGesture, { once: true });
+  window.addEventListener('keydown', unlockAudioGesture, { once: true });
+
+  // Trigger sound + desktop notification (嚴格遵守使用者要求：絕不顯示聊天內容)
+  function triggerNotification() {
+    if (!notificationsEnabled) return;
+
+    // 1. 播放通知提示音 (通知叫)
+    playNotificationSound();
+
+    // 2. 震動 (若裝置支援)
+    if ('vibrate' in navigator) {
+      try { navigator.vibrate([100, 60, 100]); } catch (_) {}
+    }
+
+    // 3. 視窗在背景或未聚焦時發送桌面通知與閃爍標題
+    if (document.hidden || !document.hasFocus()) {
+      startTitleFlashing();
+
+      // 瀏覽器桌面通知：不要顯示聊天內容，僅提示收到新訊息
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          const notification = new Notification('JUMP 聊天室', {
+            body: '收到新訊息', // 絕不顯示任何聊天內容文字
+            tag: 'jump-msg-alert',
+            renotify: true
+          });
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+          };
+        } catch (e) {
+          console.warn('Desktop notification error:', e);
+        }
+      }
+    }
+  }
+
+  function updateNotifyBtnUI() {
+    if (!notifyBtn) return;
+    if (notificationsEnabled) {
+      notifyBtn.textContent = '🔔';
+      notifyBtn.classList.remove('muted');
+      notifyBtn.title = '通知音效與桌面通知已開啟（點擊靜音）';
+    } else {
+      notifyBtn.textContent = '🔕';
+      notifyBtn.classList.add('muted');
+      notifyBtn.title = '通知已靜音（點擊開啟）';
+    }
+  }
+
+  if (notifyBtn) {
+    updateNotifyBtnUI();
+    notifyBtn.addEventListener('click', async () => {
+      getAudioContext();
+      if (!notificationsEnabled) {
+        notificationsEnabled = true;
+        localStorage.setItem('jump_notify_enabled', 'true');
+        updateNotifyBtnUI();
+        playNotificationSound(); // 播一次提示音確認
+
+        if ('Notification' in window && Notification.permission === 'default') {
+          try {
+            await Notification.requestPermission();
+          } catch (_) {}
+        }
+      } else {
+        notificationsEnabled = false;
+        localStorage.setItem('jump_notify_enabled', 'false');
+        updateNotifyBtnUI();
+      }
+    });
+  }
+
   // ==================== Polling ====================
 
   async function pollMessages() {
-    // Skip polling if document is hidden or if API_BASE is placeholder
-    if (document.hidden || CONFIG.API_BASE.includes('YOUR_DEPLOYMENT_ID')) {
+    // Skip polling only if API_BASE is placeholder
+    if (CONFIG.API_BASE.includes('YOUR_DEPLOYMENT_ID')) {
       scheduleNextPoll();
       return;
     }
@@ -856,19 +1007,30 @@ document.addEventListener('DOMContentLoaded', () => {
         statusDot.title = '連線正常';
       }
 
-      // Online users (new backend sends {count, users}; fall back to the
-      // legacy onlineCount field during rollout)
+      // Online users
       updateOnlineUI(res.data.online || { count: res.data.onlineCount || 0, users: [] });
 
       // Reset polling interval
       currentPollInterval = CONFIG.POLL_INTERVAL_MS;
 
       const messages = res.data.messages || [];
+      let hasIncomingFromOthers = false;
+
       messages.forEach((msg) => {
         // Skip messages we optimistically sent and verified ourselves
         if (sentMessageIds.has(msg.id)) return;
         renderMessage(msg, false);
+
+        if (msg.nickname !== nickname) {
+          hasIncomingFromOthers = true;
+        }
       });
+
+      // 初次載入歷史訊息不通知，後續收到他人新訊息時發出通知叫聲與桌面通知
+      if (!isInitialLoad && hasIncomingFromOthers) {
+        triggerNotification();
+      }
+      isInitialLoad = false;
 
       if (res.data.serverTs) {
         lastServerTs = res.data.serverTs;
@@ -906,7 +1068,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function scheduleNextPoll() {
     if (pollTimeoutId) clearTimeout(pollTimeoutId);
-    pollTimeoutId = setTimeout(pollMessages, currentPollInterval);
+    // 背景分頁維持輪詢保活與收通知，間隔設為 10 秒（遠小於後端 30 秒過期）
+    const delay = document.hidden ? Math.max(currentPollInterval, BACKGROUND_POLL_INTERVAL_MS) : currentPollInterval;
+    pollTimeoutId = setTimeout(pollMessages, delay);
   }
 
   function startPolling() {
@@ -919,22 +1083,13 @@ document.addEventListener('DOMContentLoaded', () => {
     pollTimeoutId = setTimeout(pollMessages, 500); // quick first check
   }
 
-  // Handle Visibility API to pause polling on hidden tab
+  // Handle Visibility API (切回前景立即同步並清除標題閃爍)
   document.addEventListener('visibilitychange', () => {
-    const statusDot = document.querySelector('.user-avatar-dot');
-    if (document.hidden) {
-      console.log('Tab hidden. Polling paused.');
-      if (statusDot) {
-        statusDot.classList.add('connecting');
-        statusDot.title = '已暫停輪詢';
-      }
-      if (pollTimeoutId) {
-        clearTimeout(pollTimeoutId);
-        pollTimeoutId = null;
-      }
-    } else {
-      console.log('Tab active. Polling resumed.');
-      startPolling();
+    if (!document.hidden) {
+      stopTitleFlashing();
+      currentPollInterval = CONFIG.POLL_INTERVAL_MS;
+      if (pollTimeoutId) clearTimeout(pollTimeoutId);
+      pollTimeoutId = setTimeout(pollMessages, 300);
     }
   });
 

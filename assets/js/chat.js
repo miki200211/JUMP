@@ -153,6 +153,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Format message timestamp to YYYY/MM/DD HH:mm for chat history
+   */
+  function formatMessageDateTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}/${month}/${date} ${hours}:${minutes}`;
+  }
+
+  /**
    * Render a single message bubble into the container.
    * localPreviewUrl: blob: URL for our own optimistic image bubbles only —
    * never taken from server data.
@@ -194,7 +209,8 @@ document.addEventListener('DOMContentLoaded', () => {
       bodyHtml = `<div class="message-text">${renderRichText(msg.text)}</div>`;
     }
 
-    const timeStr = msg.ts ? new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const timeStr = msg.ts ? formatMessageDateTime(msg.ts) : '';
+    const fullTimeTitle = msg.ts ? new Date(msg.ts).toLocaleString() : '';
 
     msgElement.innerHTML = `
       <div class="message-bubble-wrapper">
@@ -202,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="message-bubble">
           ${bodyHtml}
           <div class="message-meta">
-            <span class="message-time">${timeStr}</span>
+            <span class="message-time" title="${escapeHTML(fullTimeTitle)}">${timeStr}</span>
             ${isOptimistic ? '<span class="message-status-icon">...</span>' : ''}
           </div>
         </div>

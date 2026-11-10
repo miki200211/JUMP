@@ -406,6 +406,11 @@ header {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.message-time {
+  white-space: nowrap;
+  letter-spacing: -0.2px;
+}
+
 /* Sticker messages: big glyph, no bubble chrome */
 .message-type-sticker .message-bubble,
 .message-type-sticker.message-own .message-bubble {

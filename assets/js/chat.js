@@ -167,6 +167,53 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${year}/${month}/${date} ${hours}:${minutes}`;
   }
 
+  function getDateKey(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function formatDateDivider(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+    const weekday = weekdays[d.getDay()];
+    return `${y}年${m}月${day}日 (${weekday})`;
+  }
+
+  /**
+   * Inserts a dashed divider between messages of different dates.
+   */
+  function ensureDateDivider(ts) {
+    if (!ts) return;
+    const dateKey = getDateKey(ts);
+    if (!dateKey) return;
+
+    const messageElements = messagesContainer.querySelectorAll('.message');
+    if (messageElements.length > 0) {
+      const lastMsgEl = messageElements[messageElements.length - 1];
+      const prevDateKey = lastMsgEl.dataset.dateKey;
+      if (prevDateKey && prevDateKey !== dateKey) {
+        const dividerId = `date-divider-${dateKey}`;
+        if (!document.getElementById(dividerId)) {
+          const divider = document.createElement('div');
+          divider.id = dividerId;
+          divider.className = 'chat-date-divider';
+          divider.innerHTML = `<span class="chat-date-divider-label">${escapeHTML(formatDateDivider(ts))}</span>`;
+          messagesContainer.appendChild(divider);
+        }
+      }
+    }
+  }
+
   /**
    * Render a single message bubble into the container.
    * localPreviewUrl: blob: URL for our own optimistic image bubbles only —
@@ -183,6 +230,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const msgElement = document.createElement('div');
     msgElement.id = `msg-${msg.id}`;
     msgElement.className = `message message-type-${type} ${isOwnMessage ? 'message-own' : ''}`;
+
+    if (msg.ts) {
+      ensureDateDivider(msg.ts);
+      msgElement.dataset.dateKey = getDateKey(msg.ts);
+    }
 
     if (isOptimistic) {
       msgElement.classList.add('message-sending');

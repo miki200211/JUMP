@@ -40,18 +40,35 @@ function fetchMessages(since, fingerprint, nickname) {
   // (legacy rows predate the last two columns and read back as '')
   const range = sheet.getRange(startRow, 1, numRows, 7);
   const values = range.getValues();
+  const displayValues = range.getDisplayValues();
 
   const messages = [];
   for (let i = 0; i < values.length; i++) {
     const row = values[i];
     const ts = parseInt(row[1], 10);
 
+    let textVal = row[3];
+    // Prevent Google Sheets from auto-casting time strings like "8:46" or "1:30" into 1899 Date objects
+    if (textVal instanceof Date) {
+      const disp = displayValues[i] && displayValues[i][3];
+      if (disp && disp.indexOf('1899') === -1) {
+        textVal = disp;
+      } else {
+        const h = textVal.getHours();
+        const m = String(textVal.getMinutes()).padStart(2, '0');
+        const s = textVal.getSeconds();
+        textVal = s > 0 ? `${h}:${m}:${String(s).padStart(2, '0')}` : `${h}:${m}`;
+      }
+    } else {
+      textVal = String(textVal != null ? textVal : '');
+    }
+
     if (!since || ts > since) {
       messages.push({
         id: row[0],
         ts: ts,
-        nickname: row[2],
-        text: row[3],
+        nickname: String(row[2] || ''),
+        text: textVal,
         type: row[5] || 'text',
         mediaUrl: row[6] || ''
       });
@@ -107,6 +124,9 @@ function addMessage(payload) {
     const sheet = ss.getSheets()[0];
 
     sheet.appendRow([msgId, ts, nickname, text, fingerprint, type, mediaUrl]);
+    const lastRow = sheet.getLastRow();
+    // Explicitly set text (col 4) to plain text format (@) to prevent auto-casting "8:46" into Date
+    sheet.getRange(lastRow, 4).setNumberFormat('@');
 
     return {
       id: msgId,

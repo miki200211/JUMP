@@ -105,12 +105,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * Google Sheets might auto-cast text like "8:46" or "1:30" into a Date object,
+   * which serializes as 1899-12-30T... Restore such strings to HH:mm.
+   */
+  function restoreGoogleSheetsTime(str) {
+    if (!str) return '';
+    const m = String(str).match(/^1899-12-30T(\d{2}):(\d{2}):(\d{2})/);
+    if (m) {
+      const h = parseInt(m[1], 10);
+      const min = m[2];
+      const s = parseInt(m[3], 10);
+      return s > 0 ? `${h}:${min}:${String(s).padStart(2, '0')}` : `${h}:${min}`;
+    }
+    return str;
+  }
+
+  /**
    * Tokenize-then-escape pipeline: URLs become links (https image URLs become
    * inline embeds), every other segment is escaped as plain text. Escaping
    * after linkifying would corrupt URLs containing '&'; this order cannot.
    */
   function renderRichText(raw) {
-    const text = normalizeLegacyEntities(raw || '');
+    const text = normalizeLegacyEntities(restoreGoogleSheetsTime(raw || ''));
     let html = '';
     let cursor = 0;
 

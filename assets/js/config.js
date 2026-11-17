@@ -17,5 +17,8 @@ const CONFIG = {
 
   // Non-GIF images beyond this dimension are downscaled to JPEG before upload
   IMAGE_MAX_DIMENSION: 1600,
-  IMAGE_JPEG_QUALITY: 0.85
+  IMAGE_JPEG_QUALITY: 0.85,
+
+  // OneSignal App ID for offline Web Push (set this to enable notifications when browser tab is closed)
+  ONESIGNAL_APP_ID: 'YOUR_ONESIGNAL_APP_ID'
 };

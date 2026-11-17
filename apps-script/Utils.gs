@@ -1,3 +1,56 @@
+// ==================== OneSignal Offline Web Push ====================
+// Set these keys (or configure them in Project Settings -> Script Properties)
+// to enable offline push notifications when the browser tab is closed.
+const ONESIGNAL_APP_ID = 'YOUR_ONESIGNAL_APP_ID';
+const ONESIGNAL_REST_API_KEY = 'YOUR_ONESIGNAL_REST_API_KEY';
+
+function getOneSignalAppId() {
+  const prop = PropertiesService.getScriptProperties().getProperty('ONESIGNAL_APP_ID');
+  return prop || ONESIGNAL_APP_ID;
+}
+
+function getOneSignalRestApiKey() {
+  const prop = PropertiesService.getScriptProperties().getProperty('ONESIGNAL_REST_API_KEY');
+  return prop || ONESIGNAL_REST_API_KEY;
+}
+
+/**
+ * Send Web Push notification via OneSignal REST API.
+ * Follows strict privacy requirement: NEVER includes chat text contents.
+ */
+function sendPushNotification() {
+  const appId = getOneSignalAppId();
+  const apiKey = getOneSignalRestApiKey();
+
+  if (!appId || !apiKey || appId.indexOf('YOUR_') === 0 || apiKey.indexOf('YOUR_') === 0) {
+    return; // Safe fallback when keys are not yet configured
+  }
+
+  try {
+    const payload = {
+      app_id: appId,
+      included_segments: ['Total Subscriptions'],
+      headings: { en: 'JUMP 聊天室', zh_Hant: 'JUMP 聊天室' },
+      contents: { en: '收到新訊息', zh_Hant: '收到新訊息' },
+      url: 'https://miki200211.github.io/JUMP/'
+    };
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json; charset=utf-8',
+      headers: {
+        'Authorization': 'Basic ' + apiKey
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    UrlFetchApp.fetch('https://api.onesignal.com/notifications', options);
+  } catch (err) {
+    Logger.log('OneSignal push notification failed: ' + err);
+  }
+}
+
 /**
  * Standard JSON Success Response
  */

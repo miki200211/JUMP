@@ -102,7 +102,7 @@ function addMessage(payload) {
 
   const ts = new Date().getTime();
 
-  return withLock(function() {
+  const result = withLock(function() {
     const ss = getSpreadsheet(MESSAGES_FILE);
     const sheet = ss.getSheets()[0];
 
@@ -117,6 +117,11 @@ function addMessage(payload) {
       mediaUrl: mediaUrl
     };
   });
+
+  // Trigger offline Web Push notification (for users whose browser tab is closed)
+  sendPushNotification();
+
+  return result;
 }
 
 /**

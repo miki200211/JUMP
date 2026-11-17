@@ -1048,6 +1048,13 @@ document.addEventListener('DOMContentLoaded', () => {
             await Notification.requestPermission();
           } catch (_) {}
         }
+
+        // Request OneSignal offline push subscription if configured
+        if (window.OneSignal && typeof OneSignal.Notifications !== 'undefined') {
+          try {
+            await OneSignal.Notifications.requestPermission();
+          } catch (_) {}
+        }
       } else {
         notificationsEnabled = false;
         localStorage.setItem('jump_notify_enabled', 'false');
@@ -1164,5 +1171,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start initial polling if nickname is set
   if (nickname) {
     startPolling();
+  }
+
+  // Initialize OneSignal Web Push (for offline push when tab is closed)
+  if (CONFIG.ONESIGNAL_APP_ID && !CONFIG.ONESIGNAL_APP_ID.includes('YOUR_')) {
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      try {
+        await OneSignal.init({
+          appId: CONFIG.ONESIGNAL_APP_ID,
+          serviceWorkerParam: { scope: '/' },
+          serviceWorkerPath: 'OneSignalSDKWorker.js',
+          allowLocalhostAsSecureOrigin: true
+        });
+      } catch (err) {
+        console.warn('OneSignal initialization error:', err);
+      }
+    });
   }
 });

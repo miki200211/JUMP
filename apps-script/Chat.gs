@@ -230,3 +230,33 @@ function assertMagicBytes(bytes, mimeType) {
     throw new Error('UNSUPPORTED_TYPE: File content does not match its declared type.');
   }
 }
+
+/**
+ * Proxy media file as base64 data URL when client networks or Workspace
+ * policies block direct lh3 / Drive image embedding.
+ */
+function fetchMediaBase64(fileId) {
+  if (!/^[A-Za-z0-9_-]{20,100}$/.test(fileId)) {
+    throw new Error('INVALID_FILE_ID: File ID is invalid.');
+  }
+
+  const file = DriveApp.getFileById(fileId);
+  const blob = file.getBlob();
+  const mimeType = blob.getContentType() || 'application/octet-stream';
+
+  if (!UPLOAD_MIME_EXT[mimeType]) {
+    throw new Error('UNSUPPORTED_TYPE: Only allowed image/video types can be fetched.');
+  }
+
+  const bytes = blob.getBytes();
+  // Keep response well under Apps Script's ~50MB ContentService cap (limit to 6MB raw)
+  if (bytes.length > 6291456) {
+    throw new Error('PAYLOAD_TOO_LARGE: Media is too large to proxy.');
+  }
+
+  const base64 = Utilities.base64Encode(bytes);
+  return {
+    mimeType: mimeType,
+    dataUrl: 'data:' + mimeType + ';base64,' + base64
+  };
+}

@@ -15,6 +15,11 @@ function doGet(e) {
       return jsonResponse(result);
     }
 
+    if (action === 'media') {
+      const fileId = (e.parameter.id || '').trim();
+      return jsonResponse(fetchMediaBase64(fileId));
+    }
+
     return jsonError('INVALID_ACTION', 'Action is invalid or not specified.');
   } catch (err) {
     return errorToResponse(err);

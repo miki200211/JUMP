@@ -86,5 +86,23 @@ const api = {
       console.error('uploadImage error:', err);
       return { ok: false, error: { code: 'NETWORK_ERROR', message: err.toString() } };
     }
+  },
+
+  /**
+   * Fetch media file via Apps Script proxy as base64 data URL.
+   * Used as a resilient fallback if direct Drive / lh3 embedding is blocked.
+   */
+  async getMedia(fileId) {
+    try {
+      const url = `${CONFIG.API_BASE}?action=media&id=${encodeURIComponent(fileId)}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
+      return await response.json();
+    } catch (err) {
+      console.error('getMedia error:', err);
+      return { ok: false, error: { code: 'NETWORK_ERROR', message: err.toString() } };
+    }
   }
 };

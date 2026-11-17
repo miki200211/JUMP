@@ -149,11 +149,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return html;
   }
 
+  const DRIVE_LINK_RE = /^https:\/\/(?:lh3\.googleusercontent\.com\/d\/|drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?[^#]*id=))([A-Za-z0-9_-]{20,100})/;
+
   function urlToHtml(url) {
     const safeUrl = escapeHTML(url);
     // Only https image URLs embed (http would be mixed content on Pages)
-    if (url.indexOf('https://') === 0 && IMAGE_URL_RE.test(url)) {
-      return imageEmbedHtml(safeUrl);
+    if (url.indexOf('https://') === 0) {
+      if (IMAGE_URL_RE.test(url)) {
+        return imageEmbedHtml(safeUrl);
+      }
+      const driveMatch = url.match(DRIVE_LINK_RE);
+      if (driveMatch) {
+        const lh3Url = escapeHTML('https://lh3.googleusercontent.com/d/' + driveMatch[1]);
+        return imageEmbedHtml(lh3Url);
+      }
     }
     return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>`;
   }
@@ -161,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /** safeSrc must already be escaped by the caller. */
   function imageEmbedHtml(safeSrc) {
     return `<a href="${safeSrc}" class="chat-image-link" target="_blank" rel="noopener noreferrer">` +
-      `<img class="chat-image" src="${safeSrc}" alt="圖片" loading="lazy" referrerpolicy="no-referrer"></a>`;
+      `<img class="chat-image" src="${safeSrc}" alt="圖片"></a>`;
   }
 
   function videoEmbedHtml(safeSrc) {
@@ -299,31 +308,70 @@ document.addEventListener('DOMContentLoaded', () => {
     scrollToBottom();
   }
 
+  const mediaDataCache = new Map(); // Cache proxied base64 data URLs by fileId
+
+  function extractDriveFileId(url) {
+    if (!url) return '';
+    const m = url.match(/(?:lh3\.googleusercontent\.com\/d\/|drive\.google\.com\/(?:thumbnail\?id=|uc\?[^#]*id=|file\/d\/|open\?id=))([A-Za-z0-9_-]{20,100})/);
+    return m ? m[1] : '';
+  }
+
   /**
-   * Lightbox on click; on load errors fall back lh3 → Drive thumbnail →
-   * plain link, so a dead image URL never leaves a broken bubble.
+   * Lightbox on click; multi-tier resilient fallback chain:
+   * 1. lh3.googleusercontent.com
+   * 2. drive.google.com/thumbnail
+   * 3. drive.google.com/uc?export=view
+   * 4. Apps Script backend proxy (base64 dataUrl — bypasses network/cookie blocks)
+   * 5. Final graceful fallback link
    */
   function attachImageBehaviors(img) {
     img.addEventListener('load', scrollToBottom, { once: true });
 
-    img.addEventListener('error', () => {
+    img.addEventListener('error', async () => {
       const src = img.getAttribute('src') || '';
-      if (src.indexOf('blob:') === 0) return; // local preview; upload flow owns this bubble
-
-      const idMatch = src.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([A-Za-z0-9_-]+)/);
-      if (idMatch && !img.dataset.fallback) {
-        img.dataset.fallback = '1';
-        img.src = 'https://drive.google.com/thumbnail?id=' + idMatch[1] + '&sz=w1600';
-        return;
-      }
+      if (src.indexOf('blob:') === 0 || src.indexOf('data:') === 0) return;
 
       const link = img.closest('a.chat-image-link');
+      const originalHref = link ? link.href : src;
+      const fileId = extractDriveFileId(originalHref) || extractDriveFileId(src);
+
+      if (fileId) {
+        const step = img.dataset.fallbackStep || '0';
+        if (step === '0') {
+          img.dataset.fallbackStep = '1';
+          img.src = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w1600';
+          return;
+        }
+        if (step === '1') {
+          img.dataset.fallbackStep = '2';
+          img.src = 'https://drive.google.com/uc?export=view&id=' + fileId;
+          return;
+        }
+        if (step === '2') {
+          img.dataset.fallbackStep = '3';
+          if (mediaDataCache.has(fileId)) {
+            img.src = mediaDataCache.get(fileId);
+            return;
+          }
+          try {
+            const res = await api.getMedia(fileId);
+            if (res && res.ok && res.data && res.data.dataUrl) {
+              mediaDataCache.set(fileId, res.data.dataUrl);
+              img.src = res.data.dataUrl;
+              return;
+            }
+          } catch (err) {
+            console.warn('Media proxy fallback failed:', err);
+          }
+        }
+      }
+
       if (link) {
         const fallbackLink = document.createElement('a');
         fallbackLink.href = link.href;
         fallbackLink.target = '_blank';
         fallbackLink.rel = 'noopener noreferrer';
-        fallbackLink.textContent = link.href;
+        fallbackLink.textContent = '🖼️ 無法預覽圖片（點擊開啟連結）';
         link.replaceWith(fallbackLink);
       }
     });

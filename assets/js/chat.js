@@ -387,10 +387,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Scroll messages viewport to bottom
+   * Scroll messages viewport to bottom accurately after layout reflow
    */
   function scrollToBottom() {
+    if (!messagesContainer) return;
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    requestAnimationFrame(() => {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    });
   }
 
   // ==================== Lightbox (Modern Native <dialog>) ====================
@@ -912,14 +916,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ==================== Composer: textarea / emoji / stickers ====================
 
+  function isNearBottom() {
+    if (!messagesContainer) return true;
+    return messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 120;
+  }
+
   function autoGrowInput() {
     if (!chatInput) return;
+    const wasNearBottom = isNearBottom();
     chatInput.style.height = 'auto';
     chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+    if (wasNearBottom) {
+      scrollToBottom();
+    }
   }
 
   if (chatInput) {
     chatInput.addEventListener('input', autoGrowInput);
+    chatInput.addEventListener('focus', () => {
+      if (isNearBottom()) scrollToBottom();
+    });
     chatInput.addEventListener('keydown', (e) => {
       // Enter sends, Shift+Enter breaks a line; 229 = IME composition in progress
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {

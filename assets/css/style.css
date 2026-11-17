@@ -382,9 +382,6 @@ header {
   max-width: 80%;
   align-self: flex-start;
   animation: fadeInBubble 0.25s ease-out forwards;
-  /* Modern Web Platform: Offscreen DOM rendering optimization */
-  content-visibility: auto;
-  contain-intrinsic-size: 0 65px;
 }
 
 @keyframes fadeInBubble {

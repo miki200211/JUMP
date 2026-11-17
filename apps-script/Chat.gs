@@ -139,7 +139,9 @@ function addMessage(payload) {
   });
 
   // Trigger offline Web Push notification (for users whose browser tab is closed)
-  sendPushNotification();
+  if (typeof sendPushNotification === 'function') {
+    sendPushNotification();
+  }
 
   return result;
 }

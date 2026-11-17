@@ -345,18 +345,26 @@ document.addEventListener('DOMContentLoaded', () => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
-  // ==================== Lightbox ====================
+  // ==================== Lightbox (Modern Native <dialog>) ====================
 
   function openLightbox(src, originalUrl) {
     if (!lightboxOverlay) return;
     lightboxImage.src = src;
     lightboxOpenLink.href = originalUrl || src;
-    lightboxOverlay.classList.add('active');
+    if (typeof lightboxOverlay.showModal === 'function') {
+      if (!lightboxOverlay.open) lightboxOverlay.showModal();
+    } else {
+      lightboxOverlay.classList.add('active');
+    }
   }
 
   function closeLightbox() {
     if (!lightboxOverlay) return;
-    lightboxOverlay.classList.remove('active');
+    if (typeof lightboxOverlay.close === 'function' && lightboxOverlay.open) {
+      lightboxOverlay.close();
+    } else {
+      lightboxOverlay.classList.remove('active');
+    }
     lightboxImage.src = '';
   }
 
@@ -365,11 +373,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (lightboxOverlay) {
     lightboxOverlay.addEventListener('click', (e) => {
+      // Backdrop click detection on native <dialog>
       if (e.target === lightboxOverlay) closeLightbox();
     });
   }
 
-  // ==================== Nickname ====================
+  // ==================== Nickname (Modern Native <dialog>) ====================
 
   function setNickname(newNick) {
     nickname = newNick.trim();
@@ -382,18 +391,43 @@ document.addEventListener('DOMContentLoaded', () => {
   function showNicknameModal(canClose = true) {
     if (!nicknameModal) return;
     nicknameInput.value = nickname;
-    nicknameModal.classList.add('active');
 
     // Hide close button if nickname is empty (initial force setup)
     if (nicknameCloseBtn) {
       nicknameCloseBtn.style.display = canClose ? 'block' : 'none';
     }
+
+    if (typeof nicknameModal.showModal === 'function') {
+      if (!nicknameModal.open) nicknameModal.showModal();
+    } else {
+      nicknameModal.classList.add('active');
+    }
+    setTimeout(() => nicknameInput.focus(), 50);
   }
 
   function hideNicknameModal() {
-    if (nicknameModal) {
+    if (!nicknameModal) return;
+    if (typeof nicknameModal.close === 'function' && nicknameModal.open) {
+      nicknameModal.close();
+    } else {
       nicknameModal.classList.remove('active');
     }
+  }
+
+  if (nicknameModal) {
+    nicknameModal.addEventListener('click', (e) => {
+      // Allow backdrop click dismissal only when nickname is already set
+      if (nickname && nicknameCloseBtn && nicknameCloseBtn.style.display !== 'none' && e.target === nicknameModal) {
+        hideNicknameModal();
+      }
+    });
+
+    // Prevent ESC dismissal when nickname is mandatory (first load)
+    nicknameModal.addEventListener('cancel', (e) => {
+      if (!nickname) {
+        e.preventDefault();
+      }
+    });
   }
 
   function requireNickname() {

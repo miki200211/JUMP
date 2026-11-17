@@ -8,7 +8,7 @@
   <meta name="description" content="JUMP 即時匿名聊天室：支援貼圖、圖片與 GIF 分享、超連結，並可查看目前在線上的成員。">
 
   <!-- Styling -->
-  <link rel="stylesheet" href="assets/css/style.css?v=2.0.5">
+  <link rel="stylesheet" href="assets/css/style.css?v=2.1.0">
 
   <!-- OneSignal Web Push SDK (for offline notifications when tab is closed) -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -81,10 +81,10 @@
     </main>
   </div>
 
-  <!-- Nickname Entry Dialog (Modal Overlay) -->
-  <div class="modal-overlay" id="nickname-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <!-- Nickname Entry Dialog (Modern Native <dialog>) -->
+  <dialog class="modal-dialog" id="nickname-modal" aria-labelledby="modal-title">
     <div class="modal-card">
-      <button class="modal-close-x" id="nickname-close-btn" aria-label="關閉視窗">&times;</button>
+      <button type="button" class="modal-close-x" id="nickname-close-btn" aria-label="關閉視窗">&times;</button>
       <h2 id="modal-title">設定您的暱稱</h2>
       <p>請輸入一個在聊天室中顯示的名稱（1-20 字元）</p>
 
@@ -95,25 +95,26 @@
           placeholder="例如：小明"
           maxlength="20"
           required
+          autocomplete="nickname"
         >
         <button type="submit">確定</button>
       </form>
     </div>
-  </div>
+  </dialog>
 
-  <!-- Image Lightbox -->
-  <div class="modal-overlay" id="lightbox-overlay" role="dialog" aria-modal="true" aria-label="圖片預覽">
+  <!-- Image Lightbox (Modern Native <dialog>) -->
+  <dialog class="modal-dialog" id="lightbox-overlay" aria-label="圖片預覽">
     <figure class="lightbox-content">
-      <button class="modal-close-x" id="lightbox-close-btn" aria-label="關閉圖片">&times;</button>
+      <button type="button" class="modal-close-x" id="lightbox-close-btn" aria-label="關閉圖片">&times;</button>
       <img id="lightbox-image" src="" alt="圖片預覽">
       <a id="lightbox-open-link" href="#" target="_blank" rel="noopener noreferrer">在新分頁開啟 ↗</a>
     </figure>
-  </div>
+  </dialog>
 
   <!-- JavaScript Modules -->
   <script src="assets/js/config.js?v=2.0.0"></script>
   <script src="assets/js/emoji.js?v=2.0.0"></script>
   <script src="assets/js/api.js?v=2.0.0"></script>
-  <script src="assets/js/chat.js?v=2.0.7"></script>
+  <script src="assets/js/chat.js?v=2.1.0"></script>
 </body>
 </html>

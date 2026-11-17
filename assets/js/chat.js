@@ -470,7 +470,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setNickname(nickname);
   }
 
-  // ==================== Sending ====================
+  // ==================== Sending (Sequential Queue Architecture) ====================
+
+  const sendQueue = [];
+  let isProcessingQueue = false;
+  let lastSendSuccessTs = 0;
+  const MIN_SEND_INTERVAL_MS = 1100; // Minimum interval between consecutive sends to stay safe from rate limits
 
   function createTempId() {
     return 'temp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
@@ -498,9 +503,73 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Optimistic sending: render message immediately, trigger API call
+   * Process queued messages sequentially without blocking UI.
+   * Auto-delays and auto-retries when user sends rapidly.
    */
-  async function handleSendMessage(text, type = 'text', mediaUrl = '') {
+  async function processSendQueue() {
+    if (isProcessingQueue) return;
+    isProcessingQueue = true;
+
+    while (sendQueue.length > 0) {
+      const item = sendQueue[0];
+      const bubble = document.getElementById(`msg-${item.tempId}`);
+
+      // Ensure minimum interval between sends
+      const elapsed = Date.now() - lastSendSuccessTs;
+      if (elapsed < MIN_SEND_INTERVAL_MS) {
+        await new Promise((r) => setTimeout(r, MIN_SEND_INTERVAL_MS - elapsed));
+      }
+
+      let sentSuccessfully = false;
+      let retries = 0;
+      const MAX_RETRIES = 2;
+
+      while (!sentSuccessfully && retries <= MAX_RETRIES) {
+        try {
+          const response = await api.sendMessage(
+            nickname,
+            item.text,
+            fingerprint,
+            item.tempId,
+            item.type,
+            item.mediaUrl
+          );
+
+          if (response && response.ok && response.data) {
+            finalizeSentBubble(bubble, response.data, item.tempId);
+            lastSendSuccessTs = Date.now();
+            currentPollInterval = CONFIG.POLL_INTERVAL_MS;
+            sentSuccessfully = true;
+          } else if (response && response.error && response.error.code === 'RATE_LIMITED') {
+            retries++;
+            if (retries <= MAX_RETRIES) {
+              const icon = bubble ? bubble.querySelector('.message-status-icon') : null;
+              if (icon) icon.textContent = '稍候…';
+              await new Promise((r) => setTimeout(r, 1200));
+            } else {
+              markBubbleFailed(bubble, '⚠️ 傳送頻繁');
+            }
+          } else {
+            markBubbleFailed(bubble, '⚠️ 傳送失敗');
+            break;
+          }
+        } catch (err) {
+          console.warn('Queue send error:', err);
+          markBubbleFailed(bubble, '⚠️ 傳送失敗');
+          break;
+        }
+      }
+
+      sendQueue.shift();
+    }
+
+    isProcessingQueue = false;
+  }
+
+  /**
+   * Optimistic sending: render message immediately, enqueue to send sequentially
+   */
+  function handleSendMessage(text, type = 'text', mediaUrl = '') {
     const tempId = createTempId();
     const tempMsg = {
       id: tempId,
@@ -511,24 +580,20 @@ document.addEventListener('DOMContentLoaded', () => {
       mediaUrl: mediaUrl
     };
 
-    // Render grayed out bubble
+    // Render immediately in chat
     renderMessage(tempMsg, true);
     sentMessageIds.add(tempId);
 
-    const response = await api.sendMessage(nickname, text, fingerprint, tempId, type, mediaUrl);
-    const bubble = document.getElementById(`msg-${tempId}`);
+    // Enqueue message and process
+    sendQueue.push({
+      tempId: tempId,
+      text: text,
+      type: type,
+      mediaUrl: mediaUrl
+    });
 
-    if (response && response.ok && response.data) {
-      finalizeSentBubble(bubble, response.data, tempId);
-      currentPollInterval = CONFIG.POLL_INTERVAL_MS; // reset error backoff
-      return true;
-    }
-
-    markBubbleFailed(bubble, '⚠️ 傳送失敗');
-    if (response && response.error && response.error.code === 'RATE_LIMITED') {
-      alert('傳送速度過快，請間隔 3 秒再試。');
-    }
-    return false;
+    processSendQueue();
+    return true;
   }
 
   if (chatForm) {

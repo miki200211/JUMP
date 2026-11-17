@@ -101,7 +101,7 @@ function stripControlChars(text) {
 
 /**
  * Rate limit checker using CacheService.
- * Restricts client fingerprints to 1 post per 3 seconds.
+ * Restricts client fingerprints to 1 post per second.
  */
 function checkRateLimit(fingerprint) {
   if (!fingerprint) return;
@@ -111,11 +111,11 @@ function checkRateLimit(fingerprint) {
   const lastSent = cache.get(cacheKey);
 
   if (lastSent) {
-    throw new Error('RATE_LIMITED: Sending too fast. Please wait 3 seconds.');
+    throw new Error('RATE_LIMITED: Sending too fast. Please wait a moment.');
   }
 
-  // Save cache key for 3 seconds
-  cache.put(cacheKey, '1', 3);
+  // Save cache key for 1 second
+  cache.put(cacheKey, '1', 1);
 }
 
 /**

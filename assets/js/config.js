@@ -4,7 +4,7 @@
  */
 const CONFIG = {
   // Replace this placeholder with your deployed Google Apps Script Web App URL
-  API_BASE: 'https://script.google.com/macros/s/AKfycbyPHGYXbcAZ2iy6eTfWmkBSLV53Ki5Yt6GB81VW5tDbLYVz6Nd8sar5Ysa5HndeaVhT/exec',
+  API_BASE: 'https://script.google.com/macros/s/AKfycbzo_d2MolXqVU737o52Eslna1ygvSlwbVG0p6bOWB3VD_SgTL7xSmDwX_zAN4izHzhw/exec',
 
   // Polling interval in milliseconds. Must be at least 5000ms to preserve execution quota.
   POLL_INTERVAL_MS: 5000,

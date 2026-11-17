@@ -531,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function finalizeSentBubble(bubble, serverData, tempId) {
     if (!bubble) return;
-    bubble.classList.remove('message-sending');
+    bubble.classList.remove('message-sending', 'message-uploading', 'message-failed');
     const icon = bubble.querySelector('.message-status-icon');
     if (icon) icon.remove();
 
@@ -593,10 +593,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (retries <= MAX_RETRIES) {
               const icon = bubble ? bubble.querySelector('.message-status-icon') : null;
               if (icon) icon.textContent = '稍候…';
-              await new Promise((r) => setTimeout(r, 1200));
+              await new Promise((r) => setTimeout(r, 1500));
             } else {
               markBubbleFailed(bubble, '⚠️ 傳送頻繁');
             }
+          } else if (response && response.error && response.error.code === 'NETWORK_ERROR') {
+            // Google Apps Script POST may succeed on server even if 302 redirect response drops.
+            // Keep it in confirming state and let polling reconcile within 7 seconds.
+            const icon = bubble ? bubble.querySelector('.message-status-icon') : null;
+            if (icon) icon.textContent = '確認中…';
+            setTimeout(() => {
+              const b = document.getElementById(`msg-${item.tempId}`);
+              if (b && b.classList.contains('message-sending')) {
+                markBubbleFailed(b, '⚠️ 傳送失敗');
+              }
+            }, 7000);
+            break;
           } else {
             markBubbleFailed(bubble, '⚠️ 傳送失敗');
             break;
@@ -1255,8 +1267,14 @@ document.addEventListener('DOMContentLoaded', () => {
       let hasIncomingFromOthers = false;
 
       messages.forEach((msg) => {
-        // Skip messages we optimistically sent and verified ourselves
-        if (sentMessageIds.has(msg.id)) return;
+        // Reconcile our optimistic messages if the server actually saved them
+        if (sentMessageIds.has(msg.id)) {
+          const existingBubble = document.getElementById(`msg-${msg.id}`);
+          if (existingBubble && (existingBubble.classList.contains('message-sending') || existingBubble.classList.contains('message-failed'))) {
+            finalizeSentBubble(existingBubble, msg, msg.id);
+          }
+          return;
+        }
         renderMessage(msg, false);
 
         if (msg.nickname !== nickname) {

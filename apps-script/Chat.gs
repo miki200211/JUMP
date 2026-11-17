@@ -123,10 +123,11 @@ function addMessage(payload) {
     const ss = getSpreadsheet(MESSAGES_FILE);
     const sheet = ss.getSheets()[0];
 
-    sheet.appendRow([msgId, ts, nickname, text, fingerprint, type, mediaUrl]);
-    const lastRow = sheet.getLastRow();
-    // Explicitly set text (col 4) to plain text format (@) to prevent auto-casting "8:46" into Date
-    sheet.getRange(lastRow, 4).setNumberFormat('@');
+    const nextRow = sheet.getLastRow() + 1;
+    // Set nickname (col 3) & text (col 4) format to plain text (@) BEFORE writing
+    // so Google Sheets never auto-casts "8:46" to Date or strips leading zeros like "0123".
+    sheet.getRange(nextRow, 3, 1, 2).setNumberFormat('@');
+    sheet.getRange(nextRow, 1, 1, 7).setValues([[msgId, ts, nickname, text, fingerprint, type, mediaUrl]]);
 
     return {
       id: msgId,

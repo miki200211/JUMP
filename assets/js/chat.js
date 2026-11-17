@@ -753,25 +753,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (icon) icon.textContent = '...';
     const mediaUrl = uploadRes.data.url;
 
-    const sendRes = await api.sendMessage(nickname, '', fingerprint, tempId, type, mediaUrl);
-    if (sendRes && sendRes.ok && sendRes.data) {
-      finalizeSentBubble(bubble, sendRes.data, tempId);
-      // Keep showing the local preview (instant, already decoded); just point
-      // the link/lightbox at the hosted copy for this session.
-      if (type === 'image') {
-        const link = bubble ? bubble.querySelector('a.chat-image-link') : null;
-        if (link) link.href = mediaUrl;
-      } else {
-        const video = bubble ? bubble.querySelector('video.chat-video') : null;
-        if (video) video.src = mediaUrl;
-      }
-      currentPollInterval = CONFIG.POLL_INTERVAL_MS;
+    // Point link/lightbox/video at the hosted copy and enqueue send cleanly
+    if (type === 'image') {
+      const link = bubble ? bubble.querySelector('a.chat-image-link') : null;
+      if (link) link.href = mediaUrl;
     } else {
-      markBubbleFailed(bubble, '⚠️ 傳送失敗');
-      if (sendRes && sendRes.error && sendRes.error.code === 'RATE_LIMITED') {
-        alert('傳送速度過快，請間隔 3 秒再試。');
-      }
+      const video = bubble ? bubble.querySelector('video.chat-video') : null;
+      if (video) video.src = mediaUrl;
     }
+
+    sendQueue.push({
+      tempId: tempId,
+      text: '',
+      type: type,
+      mediaUrl: mediaUrl
+    });
+    processSendQueue();
   }
 
   /**
@@ -1375,10 +1372,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       try {
+        const basePath = location.pathname.replace(/[^/]*$/, '');
         await OneSignal.init({
           appId: CONFIG.ONESIGNAL_APP_ID,
-          serviceWorkerParam: { scope: '/' },
-          serviceWorkerPath: 'OneSignalSDKWorker.js',
+          serviceWorkerParam: { scope: basePath },
+          serviceWorkerPath: basePath + 'OneSignalSDKWorker.js',
           allowLocalhostAsSecureOrigin: true
         });
       } catch (err) {

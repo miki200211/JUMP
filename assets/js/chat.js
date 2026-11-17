@@ -42,6 +42,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Notification Elements
   const notifyBtn = document.getElementById('notify-btn');
 
+  // Reply Preview Elements
+  const replyPreviewBar = document.getElementById('reply-preview-bar');
+  const replyPreviewAuthor = document.getElementById('reply-preview-author');
+  const replyPreviewText = document.getElementById('reply-preview-text');
+  const replyCancelBtn = document.getElementById('reply-cancel-btn');
+
   // Application State
   let nickname = localStorage.getItem('chat_nickname') || '';
   let fingerprint = localStorage.getItem('chat_fingerprint') || '';
@@ -57,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let titleFlashInterval = null;
   const originalTitle = document.title;
   const BACKGROUND_POLL_INTERVAL_MS = 10000;
+  let activeReply = null; // { id, nickname, text }
 
   const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
   const SUPPORTED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
@@ -289,10 +296,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeStr = msg.ts ? formatMessageDateTime(msg.ts) : '';
     const fullTimeTitle = msg.ts ? new Date(msg.ts).toLocaleString() : '';
 
+    let replyQuoteHtml = '';
+    if (msg.replyTo && msg.replyTo.id) {
+      const safeReplyNick = escapeHTML(normalizeLegacyEntities(msg.replyTo.nickname || '匿名'));
+      const safeReplyText = escapeHTML(normalizeLegacyEntities(restoreGoogleSheetsTime(msg.replyTo.text || '')));
+      replyQuoteHtml = `
+        <div class="message-reply-quote" data-reply-id="${escapeHTML(msg.replyTo.id)}" title="點擊跳轉到原訊息">
+          <div class="message-reply-author">${safeReplyNick}</div>
+          <div class="message-reply-text">${safeReplyText}</div>
+        </div>
+      `;
+    }
+
     msgElement.innerHTML = `
       <div class="message-bubble-wrapper">
-        <div class="message-sender">${escapeHTML(normalizeLegacyEntities(msg.nickname))}</div>
+        <div class="message-header-row">
+          <span class="message-sender">${escapeHTML(normalizeLegacyEntities(msg.nickname))}</span>
+          <button type="button" class="reply-btn" title="回覆此訊息" aria-label="回覆此訊息">↩️ 回覆</button>
+        </div>
         <div class="message-bubble">
+          ${replyQuoteHtml}
           ${bodyHtml}
           <div class="message-meta">
             <span class="message-time" title="${escapeHTML(fullTimeTitle)}">${timeStr}</span>
@@ -302,10 +325,68 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     `;
 
+    // Wire reply button
+    const replyBtn = msgElement.querySelector('.reply-btn');
+    if (replyBtn) {
+      replyBtn.addEventListener('click', () => {
+        setActiveReply({
+          id: msgElement.id.replace(/^msg-/, ''),
+          nickname: msg.nickname,
+          text: getMessagePreviewText(msg)
+        });
+      });
+    }
+
+    // Wire click-to-jump on reply quote
+    const quoteEl = msgElement.querySelector('.message-reply-quote');
+    if (quoteEl) {
+      quoteEl.addEventListener('click', () => {
+        jumpToMessage(quoteEl.dataset.replyId);
+      });
+    }
+
     msgElement.querySelectorAll('img.chat-image').forEach(attachImageBehaviors);
 
     messagesContainer.appendChild(msgElement);
     scrollToBottom();
+  }
+
+  function getMessagePreviewText(msg) {
+    if (msg.type === 'image') return msg.text ? `[圖片] ${msg.text}` : '[圖片]';
+    if (msg.type === 'video') return msg.text ? `[影片] ${msg.text}` : '[影片]';
+    if (msg.type === 'sticker') return msg.text || '[貼圖]';
+    return restoreGoogleSheetsTime(msg.text || '').slice(0, 80);
+  }
+
+  function setActiveReply(replyObj) {
+    activeReply = replyObj;
+    if (replyPreviewBar && replyPreviewAuthor && replyPreviewText) {
+      replyPreviewAuthor.textContent = normalizeLegacyEntities(replyObj.nickname || '匿名');
+      replyPreviewText.textContent = normalizeLegacyEntities(replyObj.text || '');
+      replyPreviewBar.hidden = false;
+    }
+    if (chatInput) chatInput.focus();
+  }
+
+  function clearActiveReply() {
+    activeReply = null;
+    if (replyPreviewBar) replyPreviewBar.hidden = true;
+  }
+
+  if (replyCancelBtn) {
+    replyCancelBtn.addEventListener('click', clearActiveReply);
+  }
+
+  function jumpToMessage(targetId) {
+    if (!targetId) return;
+    const targetEl = document.getElementById(`msg-${targetId}`);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetEl.classList.remove('message-highlight');
+      void targetEl.offsetWidth; // trigger reflow to restart animation
+      targetEl.classList.add('message-highlight');
+      setTimeout(() => targetEl.classList.remove('message-highlight'), 1800);
+    }
   }
 
   const mediaDataCache = new Map(); // Cache proxied base64 data URLs by fileId
@@ -584,7 +665,8 @@ document.addEventListener('DOMContentLoaded', () => {
             fingerprint,
             item.tempId,
             item.type,
-            item.mediaUrl
+            item.mediaUrl,
+            item.replyTo
           );
 
           if (response && response.ok && response.data) {
@@ -635,14 +717,18 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function handleSendMessage(text, type = 'text', mediaUrl = '') {
     const tempId = createTempId();
+    const replySnapshot = activeReply ? { ...activeReply } : null;
     const tempMsg = {
       id: tempId,
       ts: Date.now(),
       nickname: nickname,
       text: text,
       type: type,
-      mediaUrl: mediaUrl
+      mediaUrl: mediaUrl,
+      replyTo: replySnapshot
     };
+
+    clearActiveReply();
 
     // Render immediately in chat
     renderMessage(tempMsg, true);
@@ -653,7 +739,8 @@ document.addEventListener('DOMContentLoaded', () => {
       tempId: tempId,
       text: text,
       type: type,
-      mediaUrl: mediaUrl
+      mediaUrl: mediaUrl,
+      replyTo: replySnapshot
     });
 
     processSendQueue();
@@ -723,8 +810,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const previewUrl = URL.createObjectURL(prepared.previewBlob);
     const tempId = createTempId();
     const type = isVideo ? 'video' : 'image';
+    const replySnapshot = activeReply ? { ...activeReply } : null;
+    clearActiveReply();
+
     renderMessage(
-      { id: tempId, ts: Date.now(), nickname: nickname, text: '', type: type, mediaUrl: '' },
+      { id: tempId, ts: Date.now(), nickname: nickname, text: '', type: type, mediaUrl: '', replyTo: replySnapshot },
       true,
       previewUrl
     );
@@ -766,7 +856,8 @@ document.addEventListener('DOMContentLoaded', () => {
       tempId: tempId,
       text: '',
       type: type,
-      mediaUrl: mediaUrl
+      mediaUrl: mediaUrl,
+      replyTo: replySnapshot
     });
     processSendQueue();
   }
@@ -1099,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hideComposerPopover();
       hideOnlinePopover();
       closeLightbox();
+      clearActiveReply();
     }
   });
 

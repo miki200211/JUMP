@@ -4,7 +4,7 @@ const UPLOADS_FOLDER_NAME = 'uploads';
 
 // Message sheet columns. Old sheets only have the first five; reads stay
 // tolerant because the extra columns come back as '' on legacy rows.
-const MESSAGE_HEADERS = ['id', 'ts', 'nickname', 'text', 'clientHash', 'type', 'mediaUrl'];
+const MESSAGE_HEADERS = ['id', 'ts', 'nickname', 'text', 'clientHash', 'type', 'mediaUrl', 'replyTo'];
 
 /**
  * Initialize workspace files and folders if not exist.
@@ -106,5 +106,8 @@ function migrateSchemaHeaders() {
   }
   if (!sheet.getRange(1, 7).getValue()) {
     sheet.getRange(1, 7).setValue('mediaUrl');
+  }
+  if (!sheet.getRange(1, 8).getValue()) {
+    sheet.getRange(1, 8).setValue('replyTo');
   }
 }

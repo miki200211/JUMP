@@ -8,7 +8,7 @@
   <meta name="description" content="JUMP 即時匿名聊天室：支援貼圖、圖片與 GIF 分享、超連結，並可查看目前在線上的成員。">
 
   <!-- Styling -->
-  <link rel="stylesheet" href="assets/css/style.css?v=2.1.6">
+  <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
 
   <!-- OneSignal Web Push SDK (for offline notifications when tab is closed) -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
@@ -48,6 +48,15 @@
         <!-- Messages Board -->
         <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
           <!-- Dynamic Chat Bubbles Rendered via chat.js -->
+        </div>
+
+        <!-- Reply Preview Bar (when replying to a specific message) -->
+        <div class="reply-preview-bar" id="reply-preview-bar" hidden>
+          <div class="reply-preview-content">
+            <span class="reply-preview-label">↩️ 回覆 <strong id="reply-preview-author"></strong>：</span>
+            <span class="reply-preview-text" id="reply-preview-text"></span>
+          </div>
+          <button type="button" class="reply-preview-cancel" id="reply-cancel-btn" aria-label="取消回覆">&times;</button>
         </div>
 
         <!-- Composer -->
@@ -114,7 +123,7 @@
   <!-- JavaScript Modules -->
   <script src="assets/js/config.js?v=2.1.8"></script>
   <script src="assets/js/emoji.js?v=2.0.0"></script>
-  <script src="assets/js/api.js?v=2.1.2"></script>
-  <script src="assets/js/chat.js?v=2.1.7"></script>
+  <script src="assets/js/api.js?v=2.2.0"></script>
+  <script src="assets/js/chat.js?v=2.2.0"></script>
 </body>
 </html>

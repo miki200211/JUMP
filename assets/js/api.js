@@ -31,7 +31,7 @@ const api = {
    * Send a chat message. type: 'text' | 'image' | 'sticker'.
    * mediaUrl is only set on image messages (URL returned by uploadImage).
    */
-  async sendMessage(nickname, text, fingerprint, messageId, type = 'text', mediaUrl = '') {
+  async sendMessage(nickname, text, fingerprint, messageId, type = 'text', mediaUrl = '', replyTo = null) {
     try {
       const payload = {
         action: 'send',
@@ -40,7 +40,8 @@ const api = {
         text: text,
         type: type,
         mediaUrl: mediaUrl,
-        fingerprint: fingerprint
+        fingerprint: fingerprint,
+        replyTo: replyTo || undefined
       };
 
       const response = await fetch(CONFIG.API_BASE, {

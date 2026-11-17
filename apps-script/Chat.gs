@@ -36,9 +36,9 @@ function fetchMessages(since, fingerprint, nickname) {
   const startRow = Math.max(2, lastRow - fetchLimit + 1);
   const numRows = lastRow - startRow + 1;
 
-  // columns: id, ts, nickname, text, clientHash, type, mediaUrl
-  // (legacy rows predate the last two columns and read back as '')
-  const range = sheet.getRange(startRow, 1, numRows, 7);
+  // columns: id, ts, nickname, text, clientHash, type, mediaUrl, replyTo
+  // (legacy rows predate the extra columns and read back as '')
+  const range = sheet.getRange(startRow, 1, numRows, 8);
   const values = range.getValues();
   const displayValues = range.getDisplayValues();
 
@@ -63,6 +63,20 @@ function fetchMessages(since, fingerprint, nickname) {
       textVal = String(textVal != null ? textVal : '');
     }
 
+    let replyTo = null;
+    if (row[7]) {
+      try {
+        const parsed = JSON.parse(String(row[7]));
+        if (parsed && typeof parsed === 'object' && parsed.id) {
+          replyTo = {
+            id: String(parsed.id).slice(0, 64),
+            nickname: String(parsed.nickname || '').slice(0, 20),
+            text: String(parsed.text || '').slice(0, 120)
+          };
+        }
+      } catch (_) {}
+    }
+
     if (!since || ts > since) {
       messages.push({
         id: row[0],
@@ -70,7 +84,8 @@ function fetchMessages(since, fingerprint, nickname) {
         nickname: String(row[2] || ''),
         text: textVal,
         type: row[5] || 'text',
-        mediaUrl: row[6] || ''
+        mediaUrl: row[6] || '',
+        replyTo: replyTo
       });
     }
   }
@@ -114,6 +129,17 @@ function addMessage(payload) {
   const msgId = payload.id || Utilities.getUuid();
   const fingerprint = payload.fingerprint || 'anonymous';
 
+  let replyToObj = null;
+  let replyToJson = '';
+  if (payload.replyTo && typeof payload.replyTo === 'object' && payload.replyTo.id) {
+    replyToObj = {
+      id: stripControlChars(String(payload.replyTo.id)).slice(0, 64),
+      nickname: stripControlChars(String(payload.replyTo.nickname || '')).slice(0, 20),
+      text: stripControlChars(String(payload.replyTo.text || '')).slice(0, 120)
+    };
+    replyToJson = JSON.stringify(replyToObj);
+  }
+
   // Rate limiting
   checkRateLimit(fingerprint);
 
@@ -124,10 +150,10 @@ function addMessage(payload) {
     const sheet = ss.getSheets()[0];
 
     const nextRow = sheet.getLastRow() + 1;
-    // Set nickname (col 3) & text (col 4) format to plain text (@) BEFORE writing
-    // so Google Sheets never auto-casts "8:46" to Date or strips leading zeros like "0123".
+    // Set nickname (col 3), text (col 4), and replyTo (col 8) to plain text format (@) BEFORE writing
     sheet.getRange(nextRow, 3, 1, 2).setNumberFormat('@');
-    sheet.getRange(nextRow, 1, 1, 7).setValues([[msgId, ts, nickname, text, fingerprint, type, mediaUrl]]);
+    sheet.getRange(nextRow, 8).setNumberFormat('@');
+    sheet.getRange(nextRow, 1, 1, 8).setValues([[msgId, ts, nickname, text, fingerprint, type, mediaUrl, replyToJson]]);
 
     return {
       id: msgId,
@@ -135,7 +161,8 @@ function addMessage(payload) {
       nickname: nickname,
       text: text,
       type: type,
-      mediaUrl: mediaUrl
+      mediaUrl: mediaUrl,
+      replyTo: replyToObj
     };
   });
 

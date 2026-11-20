@@ -4,93 +4,226 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>JUMP 聊天室 — 即時匿名聊天</title>
-  <meta name="description" content="JUMP 即時匿名聊天室：支援貼圖、圖片與 GIF 分享、超連結，並可查看目前在線上的成員。">
+  <title>JUMP 聊天室 &amp; 3D 奇幻冒險</title>
+  <meta name="description" content="JUMP 即時聊天室與 3D 奇幻 RPG：支援貼圖、圖片分享、3D 捏角色、精靈村莊商店、野生哥布林/地精/巨龍與雷火水地四大元素技能。">
 
   <!-- Styling -->
   <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
+  <link rel="stylesheet" href="assets/css/game.css?v=3.0.0">
+
+  <!-- Three.js ES Module Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.169.0/build/three.module.js"
+    }
+  }
+  </script>
 
   <!-- OneSignal Web Push SDK (for offline notifications when tab is closed) -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 </head>
 <body>
 
-  <div class="app-container">
-    <!-- Header -->
-    <header>
-      <div class="brand-section">
-        <div class="brand-title-row">
-          <h1>JUMP 聊天室</h1>
-          <div class="online-status-wrapper">
-            <button type="button" id="online-btn" aria-haspopup="true" aria-expanded="false" hidden></button>
-            <div id="online-popover" hidden>
-              <div class="online-popover-title">🟢 在線上的人</div>
-              <ul id="online-list"></ul>
+  <div class="workspace-split" id="workspace-split" data-mobile-view="chat">
+
+    <!-- Mobile View Switcher -->
+    <div class="mobile-view-bar">
+      <button type="button" class="mobile-view-tab active" data-view="chat">💬 即時聊天室</button>
+      <button type="button" class="mobile-view-tab" data-view="game">⚔️ 3D 奇幻冒險</button>
+    </div>
+
+    <!-- ==================== Left Pane: JUMP Chat Room ==================== -->
+    <div class="chat-pane">
+      <div class="app-container">
+        <!-- Header -->
+        <header>
+          <div class="brand-section">
+            <div class="brand-title-row">
+              <h1>JUMP 聊天室</h1>
+              <div class="online-status-wrapper">
+                <button type="button" id="online-btn" aria-haspopup="true" aria-expanded="false" hidden></button>
+                <div id="online-popover" hidden>
+                  <div class="online-popover-title">🟢 在線上的人</div>
+                  <ul id="online-list"></ul>
+                </div>
+              </div>
             </div>
+            <p>即時聊天・貼圖・圖片・GIF</p>
+          </div>
+
+          <!-- User Status & Nickname Display -->
+          <div class="user-status-panel">
+            <div class="user-avatar-dot"></div>
+            <span id="nickname-display">匿名訪客</span>
+            <button id="change-nickname-btn" aria-label="修改暱稱">修改</button>
+            <button type="button" id="notify-btn" title="通知音效與桌面通知" aria-label="切換通知">🔔</button>
+          </div>
+        </header>
+
+        <!-- Chat Room -->
+        <main class="main-content">
+          <section class="panel chat-panel" aria-label="即時聊天室">
+
+            <!-- Messages Board -->
+            <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
+              <!-- Dynamic Chat Bubbles Rendered via chat.js -->
+            </div>
+
+            <!-- Reply Preview Bar (when replying to a specific message) -->
+            <div class="reply-preview-bar" id="reply-preview-bar" hidden>
+              <div class="reply-preview-content">
+                <span class="reply-preview-label">↩️ 回覆 <strong id="reply-preview-author"></strong>：</span>
+                <span class="reply-preview-text" id="reply-preview-text"></span>
+              </div>
+              <button type="button" class="reply-preview-cancel" id="reply-cancel-btn" aria-label="取消回覆">&times;</button>
+            </div>
+
+            <!-- Composer -->
+            <form class="chat-input-bar" id="chat-form" autocomplete="off">
+
+              <!-- Emoji / Sticker Popover -->
+              <div id="composer-popover" hidden>
+                <div class="composer-tabs" role="tablist">
+                  <button type="button" class="composer-tab active" data-tab="emoji">😊 表情</button>
+                  <button type="button" class="composer-tab" data-tab="sticker">🧩 貼圖</button>
+                </div>
+                <div class="emoji-grid" id="emoji-grid"></div>
+                <div class="sticker-grid" id="sticker-grid" hidden></div>
+              </div>
+
+              <button type="button" class="composer-btn" id="emoji-btn" title="插入表情" aria-label="插入表情">😊</button>
+              <button type="button" class="composer-btn" id="sticker-btn" title="傳送貼圖" aria-label="傳送貼圖">🧩</button>
+              <label class="composer-btn" for="image-input" id="image-btn" title="傳送圖片、GIF 或影片" aria-label="傳送圖片、GIF 或影片">🖼️</label>
+              <input type="file" id="image-input" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/ogg,video/quicktime" hidden>
+
+              <textarea
+                id="chat-input"
+                placeholder="輸入訊息...（Enter 送出）"
+                rows="1"
+                maxlength="500"
+                aria-label="訊息內容"
+              ></textarea>
+              <button type="submit" id="send-btn">送出</button>
+            </form>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <!-- ==================== Right Pane: 3D Fantasy RPG ==================== -->
+    <section class="game-pane" id="game-stage" aria-label="3D 奇幻對打冒險">
+      <div id="game-canvas-host"></div>
+      <div id="rpg-damage-layer"></div>
+
+      <!-- Top-Left Player Status & Action Buttons -->
+      <div class="rpg-hud-top-left">
+        <div class="rpg-status-card">
+          <div class="rpg-status-header">
+            <span class="rpg-level-pill" id="rpg-player-level">Lv.1</span>
+            <span id="rpg-player-name">冒險者 (訪客)</span>
+            <span id="rpg-player-gold">120 G</span>
+          </div>
+          <div class="rpg-bar-row">
+            <div class="rpg-bar-fill hp" id="rpg-hp-fill" style="width:100%"></div>
+            <span class="rpg-bar-text" id="rpg-hp-text">110 / 110</span>
+          </div>
+          <div class="rpg-bar-row">
+            <div class="rpg-bar-fill mp" id="rpg-mp-fill" style="width:100%"></div>
+            <span class="rpg-bar-text" id="rpg-mp-text">95 / 95</span>
+          </div>
+          <div class="rpg-exp-track">
+            <div class="rpg-exp-fill" id="rpg-exp-fill" style="width:0%"></div>
           </div>
         </div>
-        <p>即時匿名聊天・貼圖・圖片・GIF</p>
+
+        <div class="rpg-toolbar">
+          <button type="button" class="rpg-hud-btn" id="toggle-chat-btn">◀ 收合聊天室</button>
+          <button type="button" class="rpg-hud-btn" id="rpg-auth-btn">🔐 登入帳號</button>
+          <button type="button" class="rpg-hud-btn" id="rpg-customize-btn">🎨 捏角色</button>
+          <button type="button" class="rpg-hud-btn" id="rpg-bag-btn">🎒 裝備</button>
+        </div>
       </div>
 
-      <!-- User Status & Nickname Display -->
-      <div class="user-status-panel">
-        <div class="user-avatar-dot"></div>
-        <span id="nickname-display">匿名訪客</span>
-        <button id="change-nickname-btn" aria-label="修改暱稱">修改</button>
-        <button type="button" id="notify-btn" title="通知音效與桌面通知" aria-label="切換通知">🔔</button>
+      <!-- Top-Right Zone Badge & Radar Minimap -->
+      <div class="rpg-hud-top-right">
+        <div id="rpg-zone-badge">🌿 精靈村莊（安全區）</div>
+        <div class="rpg-minimap-wrap">
+          <canvas id="rpg-minimap" width="126" height="126"></canvas>
+        </div>
+        <div class="rpg-controls-hint">
+          WASD 移動 · 右鍵拖曳轉視角<br>
+          左鍵 普攻 · Space 翻滾<br>
+          Q雷 E火 R水 F地 · G 精靈商店
+        </div>
       </div>
-    </header>
 
-    <!-- Chat Room -->
-    <main class="main-content">
-      <section class="panel chat-panel" aria-label="即時聊天室">
+      <!-- Floating Toast & Merchant Prompt -->
+      <div id="rpg-toast" hidden></div>
+      <button type="button" id="rpg-shop-prompt" hidden>🧝 按 [G] 或點擊與精靈商人交易</button>
 
-        <!-- Messages Board -->
-        <div class="chat-messages" id="chat-messages" role="log" aria-live="polite">
-          <!-- Dynamic Chat Bubbles Rendered via chat.js -->
-        </div>
+      <!-- Bottom Skill Hotbar -->
+      <div class="rpg-skillbar">
+        <button type="button" class="rpg-skill-slot" data-skill="attack" title="普通攻擊（滑鼠左鍵）">
+          <span class="skill-key">LMB</span>
+          <span class="skill-icon">⚔️</span>
+          <span class="skill-name">普攻</span>
+        </button>
+        <button type="button" class="rpg-skill-slot" data-skill="dodge" title="翻滾閃避（Space）">
+          <span class="skill-key">SPC</span>
+          <span class="skill-icon">💨</span>
+          <span class="skill-name">翻滾</span>
+          <span class="skill-cd"></span>
+        </button>
 
-        <!-- Reply Preview Bar (when replying to a specific message) -->
-        <div class="reply-preview-bar" id="reply-preview-bar" hidden>
-          <div class="reply-preview-content">
-            <span class="reply-preview-label">↩️ 回覆 <strong id="reply-preview-author"></strong>：</span>
-            <span class="reply-preview-text" id="reply-preview-text"></span>
-          </div>
-          <button type="button" class="reply-preview-cancel" id="reply-cancel-btn" aria-label="取消回覆">&times;</button>
-        </div>
+        <div class="rpg-skill-divider"></div>
 
-        <!-- Composer -->
-        <form class="chat-input-bar" id="chat-form" autocomplete="off">
+        <button type="button" class="rpg-skill-slot" data-skill="lightning" title="⚡ 雷電（Q）：連鎖天雷高爆發＋麻痺">
+          <span class="skill-key">Q</span>
+          <span class="skill-icon">⚡</span>
+          <span class="skill-name">雷電</span>
+          <span class="skill-cd"></span>
+        </button>
+        <button type="button" class="rpg-skill-slot" data-skill="fire" title="🔥 火焰（E）：爆裂火球＋灼燒">
+          <span class="skill-key">E</span>
+          <span class="skill-icon">🔥</span>
+          <span class="skill-name">火焰</span>
+          <span class="skill-cd"></span>
+        </button>
+        <button type="button" class="rpg-skill-slot" data-skill="water" title="💧 水（R）：範圍治療＋擊退敵人">
+          <span class="skill-key">R</span>
+          <span class="skill-icon">💧</span>
+          <span class="skill-name">水</span>
+          <span class="skill-cd"></span>
+        </button>
+        <button type="button" class="rpg-skill-slot" data-skill="earth" title="🪨 地（F）：岩刺擊飛＋5.5秒減傷護盾">
+          <span class="skill-key">F</span>
+          <span class="skill-icon">🪨</span>
+          <span class="skill-name">地</span>
+          <span class="skill-cd"></span>
+        </button>
 
-          <!-- Emoji / Sticker Popover -->
-          <div id="composer-popover" hidden>
-            <div class="composer-tabs" role="tablist">
-              <button type="button" class="composer-tab active" data-tab="emoji">😊 表情</button>
-              <button type="button" class="composer-tab" data-tab="sticker">🧩 貼圖</button>
-            </div>
-            <div class="emoji-grid" id="emoji-grid"></div>
-            <div class="sticker-grid" id="sticker-grid" hidden></div>
-          </div>
+        <div class="rpg-skill-divider"></div>
 
-          <button type="button" class="composer-btn" id="emoji-btn" title="插入表情" aria-label="插入表情">😊</button>
-          <button type="button" class="composer-btn" id="sticker-btn" title="傳送貼圖" aria-label="傳送貼圖">🧩</button>
-          <label class="composer-btn" for="image-input" id="image-btn" title="傳送圖片、GIF 或影片" aria-label="傳送圖片、GIF 或影片">🖼️</label>
-          <input type="file" id="image-input" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/ogg,video/quicktime" hidden>
-
-          <textarea
-            id="chat-input"
-            placeholder="輸入訊息...（Enter 送出）"
-            rows="1"
-            maxlength="500"
-            aria-label="訊息內容"
-          ></textarea>
-          <button type="submit" id="send-btn">送出</button>
-        </form>
-      </section>
-    </main>
+        <button type="button" class="rpg-skill-slot" data-skill="hp" title="生命藥水（按 1）">
+          <span class="skill-key">1</span>
+          <span class="skill-icon">🧪</span>
+          <span class="skill-name">紅水</span>
+          <span class="skill-count" id="rpg-hp-pot-count">3</span>
+        </button>
+        <button type="button" class="rpg-skill-slot" data-skill="mp" title="魔力藥水（按 2）">
+          <span class="skill-key">2</span>
+          <span class="skill-icon">🔷</span>
+          <span class="skill-name">藍水</span>
+          <span class="skill-count" id="rpg-mp-pot-count">3</span>
+        </button>
+      </div>
+    </section>
   </div>
 
-  <!-- Nickname Entry Dialog (Modern Native <dialog>) -->
+  <!-- ==================== Chat Dialogs ==================== -->
+
+  <!-- Nickname Entry Dialog -->
   <dialog class="modal-dialog" id="nickname-modal" aria-labelledby="modal-title">
     <div class="modal-card">
       <button type="button" class="modal-close-x" id="nickname-close-btn" aria-label="關閉視窗">&times;</button>
@@ -111,7 +244,7 @@
     </div>
   </dialog>
 
-  <!-- Image Lightbox (Modern Native <dialog>) -->
+  <!-- Image Lightbox -->
   <dialog class="modal-dialog" id="lightbox-overlay" aria-label="圖片預覽">
     <figure class="lightbox-content">
       <button type="button" class="modal-close-x" id="lightbox-close-btn" aria-label="關閉圖片">&times;</button>
@@ -120,10 +253,111 @@
     </figure>
   </dialog>
 
-  <!-- JavaScript Modules -->
+  <!-- ==================== 3D RPG Dialogs ==================== -->
+
+  <!-- RPG Account Login / Register Dialog -->
+  <dialog class="modal-dialog" id="rpg-auth-dialog" aria-label="RPG 帳號登入與註冊">
+    <div class="rpg-dialog-card">
+      <button type="button" class="modal-close-x" id="rpg-auth-close" aria-label="關閉">&times;</button>
+      <h2>⚔️ 冒險者帳號</h2>
+      <p class="rpg-dialog-sub">登入後可永久雲端保存您的 3D 捏角外觀、等級、金幣與武器裝備。</p>
+
+      <div class="rpg-tab-row">
+        <button type="button" class="rpg-tab-btn rpg-auth-tab active" data-mode="login">登入帳號</button>
+        <button type="button" class="rpg-tab-btn rpg-auth-tab" data-mode="register">註冊新帳號</button>
+      </div>
+
+      <form id="rpg-auth-form">
+        <div class="rpg-form-field">
+          <label for="rpg-auth-username">帳號（3-20 字英文、數字或底線）</label>
+          <input type="text" id="rpg-auth-username" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]{3,20}" autocomplete="username">
+        </div>
+        <div class="rpg-form-field">
+          <label for="rpg-auth-password">密碼（至少 4 碼）</label>
+          <input type="password" id="rpg-auth-password" required minlength="4" maxlength="40" autocomplete="current-password">
+        </div>
+        <div class="rpg-form-field" id="rpg-auth-nick-row" hidden>
+          <label for="rpg-auth-nickname">遊戲角色名稱</label>
+          <input type="text" id="rpg-auth-nickname" maxlength="20" placeholder="例如：龍騎士">
+        </div>
+        <div class="rpg-error-msg" id="rpg-auth-error"></div>
+        <button type="submit" class="rpg-primary-btn" id="rpg-auth-submit">登入帳號</button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- 3D Character Customizer Dialog -->
+  <dialog class="modal-dialog" id="rpg-customizer-dialog" aria-label="3D 捏角色工坊">
+    <div class="rpg-dialog-card">
+      <button type="button" class="modal-close-x" id="rpg-customizer-close" aria-label="關閉">&times;</button>
+      <h2>🎨 3D 捏角色工坊</h2>
+      <p class="rpg-dialog-sub" id="cust-account-note"></p>
+
+      <div class="rpg-customizer-grid">
+        <div id="rpg-preview-host"></div>
+        <div class="rpg-customizer-controls">
+          <div class="rpg-form-field" style="margin-bottom:0.2rem">
+            <label for="cust-hair-style">髮型</label>
+            <select id="cust-hair-style">
+              <option value="short">俐落短髮</option>
+              <option value="long">飄逸長髮</option>
+              <option value="ponytail">精靈馬尾</option>
+              <option value="spiky">熱血刺蝟頭</option>
+            </select>
+          </div>
+          <label class="cust-row"><span>髮色</span><input type="color" id="cust-hair-color"></label>
+          <label class="cust-row"><span>膚色</span><input type="color" id="cust-skin-color"></label>
+          <label class="cust-row"><span>瞳色</span><input type="color" id="cust-eye-color"></label>
+          <label class="cust-row"><span>服裝主色</span><input type="color" id="cust-outfit-primary"></label>
+          <label class="cust-row"><span>披風顏色</span><input type="color" id="cust-cape-color"></label>
+          <label class="cust-row"><span>精靈尖耳</span><input type="checkbox" id="cust-elf-ears"></label>
+          <label class="cust-row"><span>配戴披風</span><input type="checkbox" id="cust-cape"></label>
+          <label class="cust-row">
+            <span>身高體型</span>
+            <input type="range" id="cust-height" min="0.88" max="1.14" step="0.02" value="1.0">
+          </label>
+        </div>
+      </div>
+
+      <button type="button" class="rpg-primary-btn" id="cust-save-btn">✨ 套用並儲存外觀</button>
+    </div>
+  </dialog>
+
+  <!-- Elf Merchant Shop Dialog -->
+  <dialog class="modal-dialog" id="rpg-shop-dialog" aria-label="精靈村莊裝備商店">
+    <div class="rpg-dialog-card">
+      <button type="button" class="modal-close-x" id="rpg-shop-close" aria-label="關閉">&times;</button>
+      <h2>🧝 精靈村莊裝備商店</h2>
+      <p class="rpg-dialog-sub">「歡迎來到生命古樹庇護的精靈村，挑一把趁手的武器吧！」</p>
+      <div class="rpg-shop-gold-pill">💰 目前金幣：<span id="rpg-shop-gold">0 G</span></div>
+
+      <div class="rpg-tab-row">
+        <button type="button" class="rpg-tab-btn rpg-shop-tab active" data-cat="weapon">⚔️ 武器</button>
+        <button type="button" class="rpg-tab-btn rpg-shop-tab" data-cat="armor">🛡️ 防具</button>
+        <button type="button" class="rpg-tab-btn rpg-shop-tab" data-cat="consumable">🧪 藥水</button>
+      </div>
+
+      <div class="rpg-item-list" id="rpg-shop-list"></div>
+    </div>
+  </dialog>
+
+  <!-- Player Equipment Bag Dialog -->
+  <dialog class="modal-dialog" id="rpg-bag-dialog" aria-label="裝備背包">
+    <div class="rpg-dialog-card">
+      <button type="button" class="modal-close-x" id="rpg-bag-close" aria-label="關閉">&times;</button>
+      <h2>🎒 我的裝備背包</h2>
+      <p class="rpg-dialog-sub">點選已擁有的武器與防具即可即時切換 3D 外觀與戰鬥數值。</p>
+      <div class="rpg-item-list" id="rpg-bag-list"></div>
+    </div>
+  </dialog>
+
+  <!-- Chat JavaScript Modules -->
   <script src="assets/js/config.js?v=2.2.1"></script>
   <script src="assets/js/emoji.js?v=2.0.0"></script>
   <script src="assets/js/api.js?v=2.2.0"></script>
   <script src="assets/js/chat.js?v=2.2.0"></script>
+
+  <!-- 3D Fantasy RPG ES Module Entry -->
+  <script type="module" src="assets/js/game/main.js?v=3.0.0"></script>
 </body>
 </html>

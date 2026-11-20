@@ -1,10 +1,12 @@
 const FOLDER_NAME = 'JumpApp';
 const MESSAGES_FILE = 'messages';
+const PLAYERS_FILE = 'rpg_players';
 const UPLOADS_FOLDER_NAME = 'uploads';
 
 // Message sheet columns. Old sheets only have the first five; reads stay
 // tolerant because the extra columns come back as '' on legacy rows.
 const MESSAGE_HEADERS = ['id', 'ts', 'nickname', 'text', 'clientHash', 'type', 'mediaUrl', 'replyTo'];
+const PLAYER_HEADERS = ['username', 'passwordHash', 'nickname', 'appearanceJson', 'stateJson', 'updatedAt'];
 
 /**
  * Initialize workspace files and folders if not exist.
@@ -19,8 +21,9 @@ function initWorkspace() {
     folder = DriveApp.createFolder(FOLDER_NAME);
   }
 
-  // Create messages sheet if missing
+  // Create messages & rpg_players sheets if missing
   getOrCreateSpreadsheet(folder, MESSAGES_FILE, MESSAGE_HEADERS);
+  getOrCreateSpreadsheet(folder, PLAYERS_FILE, PLAYER_HEADERS);
 
   // Create uploads subfolder if missing
   getOrCreateSubfolder(folder, UPLOADS_FOLDER_NAME);

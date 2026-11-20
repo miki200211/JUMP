@@ -50,6 +50,18 @@ function doPost(e) {
       return jsonResponse(uploadImage(payload));
     }
 
+    if (action === 'rpg_register') {
+      return jsonResponse(rpgRegister(payload));
+    }
+
+    if (action === 'rpg_login') {
+      return jsonResponse(rpgLogin(payload));
+    }
+
+    if (action === 'rpg_save') {
+      return jsonResponse(rpgSave(payload));
+    }
+
     return jsonError('INVALID_ACTION', 'Action is invalid or not specified.');
   } catch (err) {
     return errorToResponse(err);

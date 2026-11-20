@@ -1,0 +1,709 @@
+/* =========================================================
+   JUMP Split Workspace (Left Chatroom + Right 3D Fantasy RPG)
+   ========================================================= */
+
+.workspace-split {
+  display: flex;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-pane {
+  width: 390px;
+  min-width: 330px;
+  max-width: 440px;
+  height: 100%;
+  flex: none;
+  border-right: 1px solid var(--border-color);
+  transition: width 0.2s ease, min-width 0.2s ease, opacity 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-split.chat-collapsed .chat-pane {
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
+  opacity: 0;
+}
+
+.chat-pane .app-container {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  padding: 0.9rem 1rem;
+  gap: 0.7rem;
+}
+
+.chat-pane header {
+  padding-bottom: 0.65rem;
+}
+
+.chat-pane .brand-section h1 {
+  font-size: 1.35rem;
+}
+
+.chat-pane .panel {
+  padding: 0.9rem;
+  border-radius: 18px;
+}
+
+/* Mobile View Switcher (hidden on desktop) */
+.mobile-view-bar {
+  display: none;
+}
+
+/* =========================================================
+   Right Pane: 3D Game Stage & RPG HUD
+   ========================================================= */
+
+.game-pane {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+  background: #0f1226;
+  overflow: hidden;
+  user-select: none;
+}
+
+#game-canvas-host {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+#game-canvas-host canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Floating Damage Layer */
+#rpg-damage-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 12;
+}
+
+.rpg-float-dmg {
+  position: absolute;
+  font-weight: 800;
+  font-size: 1rem;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  transform: translate(-50%, -50%);
+  animation: rpgFloatUp 0.95s ease-out forwards;
+  white-space: nowrap;
+}
+
+.rpg-float-dmg.big {
+  font-size: 1.3rem;
+}
+
+@keyframes rpgFloatUp {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.9); }
+  25% { opacity: 1; transform: translate(-50%, -85%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -180%) scale(0.95); }
+}
+
+/* Top-Left Player Status HUD */
+.rpg-hud-top-left {
+  position: absolute;
+  top: 0.85rem;
+  left: 0.85rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+.rpg-status-card {
+  background: rgba(15, 18, 38, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 0.7rem 0.9rem;
+  min-width: 245px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.rpg-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.rpg-level-pill {
+  background: var(--accent-gradient);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.48rem;
+  border-radius: 99px;
+}
+
+#rpg-player-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#rpg-player-gold {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fde047;
+}
+
+.rpg-bar-row {
+  position: relative;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 0.3rem;
+}
+
+.rpg-bar-fill {
+  height: 100%;
+  transition: width 0.15s ease;
+}
+
+.rpg-bar-fill.hp {
+  background: linear-gradient(90deg, #dc2626, #ef4444, #f87171);
+}
+
+.rpg-bar-fill.mp {
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+}
+
+.rpg-bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.rpg-exp-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.rpg-exp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a855f7, #facc15);
+  transition: width 0.25s ease;
+}
+
+.rpg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.rpg-hud-btn {
+  background: rgba(15, 18, 38, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.35rem 0.65rem;
+  border-radius: 10px;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: var(--transition-fast);
+}
+
+.rpg-hud-btn:hover {
+  background: rgba(99, 102, 241, 0.35);
+  border-color: var(--accent-purple);
+}
+
+/* Top-Right Minimap & Zone */
+.rpg-hud-top-right {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+#rpg-zone-badge {
+  background: rgba(15, 18, 38, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.3rem 0.75rem;
+  border-radius: 99px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  backdrop-filter: blur(10px);
+}
+
+.rpg-minimap-wrap {
+  width: 126px;
+  height: 126px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  background: rgba(15, 18, 38, 0.75);
+}
+
+.rpg-controls-hint {
+  background: rgba(15, 18, 38, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  text-align: right;
+  line-height: 1.45;
+}
+
+/* Merchant Interact Prompt & Toast */
+#rpg-shop-prompt {
+  position: absolute;
+  bottom: 6.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.92), rgba(5, 150, 105, 0.92));
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.55rem 1.2rem;
+  border-radius: 99px;
+  font-family: var(--font-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  animation: fadeInBubble 0.2s ease-out;
+}
+
+#rpg-toast {
+  position: absolute;
+  top: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: rgba(15, 18, 38, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 0.5rem 1.1rem;
+  border-radius: 99px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#rpg-toast[data-tone="success"] { border-color: #10b981; color: #a7f3d0; }
+#rpg-toast[data-tone="warn"] { border-color: #f59e0b; color: #fde68a; }
+#rpg-toast[data-tone="danger"] { border-color: #ef4444; color: #fecaca; }
+
+/* Bottom Skill Hotbar */
+.rpg-skillbar {
+  position: absolute;
+  bottom: 0.9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(15, 18, 38, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(14px);
+  padding: 0.45rem 0.65rem;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.rpg-skill-slot {
+  position: relative;
+  width: 52px;
+  height: 54px;
+  border-radius: 12px;
+  background: rgba(30, 27, 52, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  font-family: var(--font-primary);
+  transition: var(--transition-fast);
+  overflow: hidden;
+}
+
+.rpg-skill-slot:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-purple);
+}
+
+.rpg-skill-slot .skill-key {
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.rpg-skill-slot .skill-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.rpg-skill-slot .skill-name {
+  font-size: 0.64rem;
+  color: #cbd5e1;
+}
+
+.rpg-skill-slot .skill-count {
+  position: absolute;
+  bottom: 2px;
+  right: 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fde047;
+}
+
+.rpg-skill-slot .skill-cd {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 9, 20, 0.78);
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.rpg-skill-slot.on-cd .skill-cd {
+  display: flex;
+}
+
+.rpg-skill-divider {
+  width: 1px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 0.1rem;
+}
+
+/* =========================================================
+   RPG Dialogs (Auth / Customizer / Elf Shop / Bag)
+   ========================================================= */
+
+.rpg-dialog-card {
+  background: rgba(19, 17, 38, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  padding: 1.6rem;
+  width: 92vw;
+  max-width: 520px;
+  max-height: 86vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  color: var(--text-primary);
+}
+
+.rpg-dialog-card h2 {
+  font-size: 1.35rem;
+  margin-bottom: 0.35rem;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rpg-dialog-sub {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.rpg-tab-row {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.rpg-tab-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.48rem 0.7rem;
+  border-radius: 10px;
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rpg-tab-btn.active {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: var(--accent-purple);
+  color: #fff;
+}
+
+.rpg-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.85rem;
+}
+
+.rpg-form-field label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.rpg-form-field input[type="text"],
+.rpg-form-field input[type="password"],
+.rpg-form-field select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 0.6rem 0.8rem;
+  font-family: var(--font-primary);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.rpg-form-field input:focus,
+.rpg-form-field select:focus {
+  border-color: var(--accent-purple);
+}
+
+.rpg-primary-btn {
+  width: 100%;
+  background: var(--accent-gradient);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 0.75rem;
+  font-family: var(--font-primary);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rpg-error-msg {
+  font-size: 0.82rem;
+  color: #fca5a5;
+  margin-bottom: 0.75rem;
+  min-height: 1.1em;
+}
+
+/* Customizer Layout */
+.rpg-customizer-grid {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+#rpg-preview-host {
+  flex: none;
+  width: 220px;
+  height: 260px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: #131126;
+}
+
+.rpg-customizer-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.cust-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+
+.cust-row input[type="color"] {
+  width: 42px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Shop & Bag Items */
+.rpg-shop-gold-pill {
+  display: inline-block;
+  background: rgba(250, 204, 21, 0.16);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  color: #fde047;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 99px;
+  margin-bottom: 0.85rem;
+}
+
+.rpg-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rpg-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 0.75rem 0.9rem;
+}
+
+.rpg-item-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+.rpg-item-stat {
+  font-size: 0.76rem;
+  color: #6ee7b7;
+  margin: 0.12rem 0;
+}
+
+.rpg-item-desc {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.rpg-buy-btn {
+  flex: none;
+  background: var(--accent-purple);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.48rem 0.85rem;
+  font-family: var(--font-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rpg-buy-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* =========================================================
+   Responsive: Mobile / Narrow Viewports
+   ========================================================= */
+@media (max-width: 960px) {
+  .workspace-split {
+    flex-direction: column;
+  }
+
+  .mobile-view-bar {
+    display: flex;
+    flex: none;
+    background: rgba(15, 18, 38, 0.95);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.35rem 0.5rem;
+    gap: 0.5rem;
+    z-index: 50;
+  }
+
+  .mobile-view-tab {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.45rem;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .mobile-view-tab.active {
+    background: var(--accent-gradient);
+    border-color: transparent;
+    color: #fff;
+  }
+
+  .chat-pane {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    border-right: none;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .workspace-split[data-mobile-view="game"] .chat-pane {
+    display: none;
+  }
+
+  .workspace-split[data-mobile-view="chat"] .game-pane {
+    display: none;
+  }
+
+  #toggle-chat-btn {
+    display: none;
+  }
+
+  .rpg-customizer-grid {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rpg-skill-slot {
+    width: 44px;
+    height: 48px;
+  }
+
+  .rpg-controls-hint {
+    display: none;
+  }
+}

@@ -1,27 +1,141 @@
-# JUMP 聊天室
+# JUMP 聊天室 × 3D 奇幻多人肉鴿 RPG
 
-部署在 GitHub Pages 上的專門聊天室：即時匿名聊天，支援 Emoji 大貼圖、圖片 / GIF 上傳、訊息超連結，以及在線成員名單。後端為 Google Apps Script Web App，資料存於 Google Drive（Sheets + 圖片資料夾）。
+[![Live Demo](https://img.shields.io/badge/Live-GitHub%20Pages-6366f1?style=for-the-badge)](https://miki200211.github.io/JUMP/)
+[![Three.js](https://img.shields.io/badge/3D%20Engine-Three.js-0ea5e9?style=for-the-badge)](https://threejs.org/)
+[![Firebase](https://img.shields.io/badge/Realtime-Firebase%20RTDB-f59e0b?style=for-the-badge)](https://firebase.google.com/)
+[![Google Apps Script](https://img.shields.io/badge/Cloud%20Save-Apps%20Script-10b981?style=for-the-badge)](https://developers.google.com/apps-script)
 
-詳細設計見 [ARCHITECTURE.md](ARCHITECTURE.md)。
+**JUMP** 是一個部署於 GitHub Pages 的**雙視窗同步互動平台**：左側為即時聊天室，右側為純前端 **Three.js 3D 奇幻多人動作肉鴿 RPG**。支援拖曳自由縮放左右視窗、強制帳號登入與聊天室／遊戲雙向暱稱同步、Firebase 即時多人組隊與野外 PvP，並融合《吸血鬼倖存者》肉鴿天賦、《上古卷軸》龍吼與神器，以及古希臘神話史詩 Boss 戰！
 
-## 本地開發
+🌐 **線上體驗**：https://miki200211.github.io/JUMP/  
+📐 **系統架構**：見 [ARCHITECTURE.md](ARCHITECTURE.md)
 
-```bash
-npm run dev   # http-server -p 8080，打開 http://localhost:8080
+---
+
+## ✨ 核心特色
+
+### 💬 左側：JUMP 即時聊天室
+- **帳號綁定與暱稱同步**：必須登入帳號後使用（無訪客模式），在聊天室或遊戲修改暱稱會即時雙向同步並儲存至雲端。
+- **豐富互動體驗**：支援回覆引用（Quote Reply）、訊息依序排程發送佇列、Emoji 大貼圖、圖片／GIF 上傳（附 4 層圖片備援與 Apps Script 媒體代理）、網址自動轉超連結。
+- **日期與通知**：顯示完整時間戳（`YYYY/MM/DD HH:mm`）、跨日虛線分隔線、在線成員名單、即時提示音效與隱私保護瀏覽器／Web Push 通知。
+- **自訂雙欄介面**：支援桌面版**拖曳中央分隔線自由調整視窗比例**、一鍵收合聊天室專心打怪，以及手機版頁籤快速切換。
+
+### ⚔️ 右側：3D 奇幻多人動作肉鴿 RPG
+- **🤝 即時多人連線、組隊共鬥與野外 PvP**（Firebase Realtime Database）：
+  - **組隊免傷與共鬥**：建立或輸入隊伍代碼組隊，同隊成員在野外互相免傷、共享打怪經驗值與金幣，並可用 `R` 水系技能替隊友回血。
+  - **自由 PvP 區域**：離開精靈村莊安全區後，非同隊玩家之間可自由切磋對戰。
+- **🧛 吸血鬼倖存者風格「肉鴿三選一」天賦系統**：
+  - 每次升級、開啟山洞上古秘寶箱或擊殺神話 Boss，皆會彈出 **3 選 1 肉鴿賜福**（可無限疊加層數）：
+    - `🗡️ 環繞聖劍`（角色周圍自動旋轉的 3D 聖光飛劍）
+    - `🔥 聖炎驅魔結界`（大蒜光環，自動灼燒靠近敵人並壓制巨魔／九頭蛇再生）
+    - `⚡ 雷神自動落雷`、`❄️ 寒霜新星脈衝`、`🦇 鮮血汲取`、`⚔️ 龍裔狂戰之力`、`🛡️ 上古龍血鐵壁`、`⏳ 瑪格努斯秘法冷卻`、`💨 暗影疾風步`、`🧲 帝國黃金磁鐵`
+- **🎨 3D 奇幻捏臉與造型工坊（支援雲端與多人同步）**：
+  - **10 種髮型**、**6 種眼神／瞳孔**（含妖瞳、發光眼、獨眼刀疤、黑曜石眼罩）、**4 種種族耳朵**、**8 種臉部特徵與戰紋**（大鬍子、戰紋、眼鏡、修羅鬼面）、**9 種 3D 頭飾／王冠／惡魔與古龍角／光環**、**6 種會動態扇動的 3D 背部羽翼**（天使、惡魔、古龍、精靈蝶翼、雷光浮游翼），搭配身高／壯碩度雙滑桿與「🎲 隨機奇幻造型」一鍵搭配。
+- **🐉《上古卷軸》× 🏛️《古希臘神話》傳說神器與卷軸**：
+  - 精靈商店提供 **☀️ 破曉者（對不死族 +60% 傷）**、**🩸 魔族湮滅巨劍**、**🐉 龍骨霸王鎧**，以及古希臘神器 **🔱 波賽頓海神三叉戟**、**⚡ 宙斯雷霆神矛**、**🏛️ 雅典娜埃吉斯黃金神鎧**。
+  - 深入屍毒山洞開啟 **📦 上古秘寶箱** 可收集四大 **《上古卷軸》（龍裔／血月／湮滅／松加德）** 獲得永久被動加成。
+
+---
+
+## 🗺️ 世界地圖與 16 種硬核怪物／Boss
+
+| 區域 | 位置 | 特色與盤踞強敵 |
+| :--- | :--- | :--- |
+| **🌿 精靈村莊（安全區）** | 中央 `(0, 0)` | 生命古樹庇護、免傷快速回血回魔與解除異常狀態、精靈裝備商人（按 `G` 交易） |
+| **🪓 綠皮荒原要塞** | 東南 `(52, 26)` | **👺 哥布林劫掠者**、**🪓 獸人嗜血狂戰士**（狂暴躍擊）、**🏏 食人魔碎骨巨霸**（重擊擊飛）、**🌿 嗜血遠古巨魔**（每秒回血，需火系壓制） |
+| **☠️ 幽暗屍毒山洞** | 東北 `(54, -46)` | 3D 鐘乳石毒霧洞窟。**🧟 屍毒暴走殭屍**（命中附加 `☣️ 屍毒感染` 扣血減速）、**❄️ 天際屍鬼死靈大君**（會施放龍吼 `Fus Ro Dah` 轟飛玩家！），深處藏有 **📦 上古秘寶箱** |
+| **🍄 地精與吸血鬼血林** | 西方 `(-52, 14)` | 血月祭壇。**💣 地精煉金炸彈客**（遠程轟炸）、**🦇 暗夜吸血鬼真祖**（高移速且每次攻擊吸血回復自身 75% 血量） |
+| **🏛️ 克里特迷宮與古希臘神殿** | 西北 `(-54, -50)` | 大理石列柱與迷宮石牆。**🏹 半人馬戰神喀戎**（遠程狙擊）與六大史詩 Boss：**🐂 米諾陶洛斯**（蠻牛衝鋒）、**🐍 梅杜莎**（`🗿 石化凝視` 減速 65%）、**👁️ 獨眼巨人波呂斐摩斯**（投擲爆裂巨岩）、**🐺 三頭地獄犬刻耳柏洛斯**（`🔥 冥火灼燒`）、**🦁 奇美拉**（烈焰＋劇毒）、**🐉 九頭蛇海德拉**（高再生＋深淵毒息） |
+| **🌋 火山世界吞噬者巢穴** | 北方 `(0, -72)` | 天際龍語牆。世界王 **🔥 奧杜因・煉獄古龍 Boss**（高傷煉獄龍息紅圈預警） |
+
+---
+
+## 🎮 遊戲操作按鍵
+
+| 按鍵 | 功能說明 |
+| :--- | :--- |
+| `W` `A` `S` `D` / 方向鍵 | 角色移動（支援切換視窗自動釋放按鍵防卡鍵） |
+| 滑鼠右鍵拖曳 / 滾輪 | 360° 旋轉視角 / 縮放鏡頭距離 |
+| 滑鼠左鍵 | 武器普攻揮砍（具備暴擊與武器特效） |
+| `Space` | 無敵翻滾閃避（躲避 Boss 吐息與重擊） |
+| `Q` | ⚡ **雷電**：天降雷柱並連鎖彈跳 4 名敵人與麻痺減速 |
+| `E` | 🔥 **火焰**：爆裂火球大範圍灼燒，壓制巨魔與九頭蛇回血 |
+| `R` | 💧 **水之聖泉**：回復自己與同隊隊友血量、**淨化屍毒／石化／冥火**並擊退敵群 |
+| `F` | 🪨 **地裂護盾**：竄出巨岩尖刺擊飛敵人，並套上 5.5 秒減傷 50% 護盾 |
+| `T` | 🗣️ **上古龍吼（Fus Ro Dah）**：扇形音波巨額傷害與超遠轟飛擊退 |
+| `1` / `2` | 飲用生命聖水（兼解屍毒、石化、冥火）／魔力藥水 |
+| `G` | 與精靈村莊商人交易 ／ 開啟屍毒山洞深處的「上古秘寶箱」 |
+
+---
+
+## 📂 專案結構
+
+```text
+├── index.html                  # 主入口（左右雙欄聊天室 + 3D RPG 畫布與各式彈窗）
+├── assets/
+│   ├── css/
+│   │   ├── style.css           # 聊天室與全域主題樣式
+│   │   └── game.css            # 3D 遊戲 HUD、拖曳分隔線、捏臉工坊與肉鴿卡片樣式
+│   └── js/
+│       ├── config.js           # Apps Script API URL 與 Firebase RTDB 設定
+│       ├── api.js              # 聊天室 API 封裝
+│       ├── chat.js             # 聊天室邏輯、排程佇列、引用回覆、通知與暱稱同步
+│       ├── emoji.js            # Emoji 貼圖表
+│       └── game/
+│           ├── data.js         # 裝備神器、技能、肉鴿天賦、上古卷軸、區域與 16 種怪物數值表
+│           ├── models.js       # Three.js 程序化 3D 角色（捏臉／羽翼／頭飾）與全部怪物 Boss 模型
+│           ├── world.js        # 3D 世界地形（精靈村、綠皮要塞、屍毒山洞、血林、希臘神殿、火山巢穴）
+│           ├── vfx.js          # 元素技能、龍吼音波、冰霜新星、毒霧、炸彈與龍息預警特效
+│           ├── auth.js         # RPG 帳號註冊／登入與雲端存檔 API 介接
+│           ├── network.js      # Firebase Realtime Database 即時多人位置／組隊／PvP／怪物同步
+│           └── main.js         # 遊戲主迴圈、戰鬥判定、Boss AI、肉鴿自動武器與 UI 控制
+└── apps-script/                # Google Apps Script 後端（聊天室、圖片代理、RPG 帳號與雲端存檔）
+    ├── Main.gs
+    ├── Chat.gs
+    ├── Rpg.gs
+    ├── Storage.gs
+    └── Utils.gs
 ```
 
-前端直接呼叫 `assets/js/config.js` 裡設定的線上 Apps Script `/exec` URL，本地開發不需要自己起後端。
+---
 
-## 部署
+## 💻 本地開發
 
-- **前端**：push 到 `main`，GitHub Pages（Source: `main` / root）自動生效。改 JS/CSS 時記得 bump `index.html` 的 `?v=` cache-buster。
-- **後端**：`apps-script/` 用 [clasp](https://github.com/google/clasp) 推送，並**更新既有 deployment** 以保持 `/exec` URL 不變：
+```bash
+npm install
+npm run dev   # 啟動 http-server -p 8080，打開 http://localhost:8080
+```
+
+前端會直接連線至 `assets/js/config.js` 內設定的 Google Apps Script `/exec` URL 與 Firebase Realtime Database，本地開發無須另起後端。
+
+---
+
+## 🚀 部署指南
+
+### 1. 前端（GitHub Pages）
+- 直接 `git push origin main`，GitHub Pages（Source: `main` / root）會自動發布。
+- 更新 JS / CSS 後，請記得同步遞增 `index.html` 內的 `?v=` 版本號以清除瀏覽器快取。
+
+### 2. 後端（Google Apps Script）
+`apps-script/` 透過 [clasp](https://github.com/google/clasp) 或 Apps Script 線上編輯器部署，更新時請**沿用既有部署版本（Deployment ID）**以維持 `/exec` URL 不變：
 
 ```bash
 cd apps-script
 clasp push
 clasp deployments
-clasp deploy --deploymentId <ID> --description "..."
+clasp deploy --deploymentId <ID> --description "Update backend"
 ```
 
-首次升級到 v2（聊天室版）後，在 Apps Script 編輯器執行一次 `migrateSchemaHeaders()` 補上訊息表的新欄位表頭。
+### 3. 多人即時連線（Firebase Realtime Database）
+在 Firebase Console 的 **Realtime Database → 規則** 中，確保 `/world` 節點允許玩家讀寫同步位置、組隊與戰鬥事件：
+
+```json
+{
+  "rules": {
+    "world": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+```

@@ -707,3 +707,166 @@
     display: none;
   }
 }
+
+/* =========================================================
+   Phase 2: Multiplayer Status, Party HUD & Invite Banner
+   ========================================================= */
+
+.rpg-net-badge {
+  background: rgba(15, 18, 38, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0.22rem 0.65rem;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  backdrop-filter: blur(10px);
+}
+
+.rpg-net-badge.online {
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #6ee7b7;
+}
+
+.rpg-party-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 245px;
+}
+
+.rpg-party-hud[hidden] {
+  display: none;
+}
+
+.rpg-teammate-card {
+  background: rgba(15, 18, 38, 0.76);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-left: 3px solid #34d399;
+  border-radius: 10px;
+  padding: 0.35rem 0.6rem;
+  backdrop-filter: blur(10px);
+}
+
+.rpg-teammate-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #a7f3d0;
+  margin-bottom: 0.22rem;
+}
+
+.rpg-teammate-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.rpg-teammate-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  transition: width 0.2s ease;
+}
+
+.rpg-invite-banner {
+  position: absolute;
+  top: 7.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 32;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: rgba(19, 17, 38, 0.95);
+  border: 1px solid #34d399;
+  border-radius: 14px;
+  padding: 0.6rem 1rem;
+  font-size: 0.84rem;
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+}
+
+.rpg-invite-banner[hidden] {
+  display: none;
+}
+
+.rpg-invite-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.rpg-invite-accept,
+.rpg-invite-decline {
+  border: none;
+  border-radius: 8px;
+  padding: 0.32rem 0.75rem;
+  font-family: var(--font-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rpg-invite-accept {
+  background: #10b981;
+  color: #fff;
+}
+
+.rpg-invite-decline {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+}
+
+.rpg-party-status-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.84rem;
+  margin-bottom: 0.85rem;
+  line-height: 1.5;
+}
+
+.rpg-party-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.rpg-join-code-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rpg-join-code-row input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-primary);
+  font-size: 0.88rem;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.rpg-danger-btn {
+  width: 100%;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fecaca;
+  border-radius: 10px;
+  padding: 0.6rem;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rpg-section-title {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin: 0.5rem 0 0.6rem;
+}

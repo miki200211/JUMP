@@ -20,5 +20,14 @@ const CONFIG = {
   IMAGE_JPEG_QUALITY: 0.85,
 
   // OneSignal App ID for offline Web Push (set this to enable notifications when browser tab is closed)
-  ONESIGNAL_APP_ID: 'YOUR_ONESIGNAL_APP_ID'
+  ONESIGNAL_APP_ID: 'YOUR_ONESIGNAL_APP_ID',
+
+  // Firebase Realtime Database config for 3D RPG real-time multiplayer, party & PvP.
+  // Fill in databaseURL (and apiKey/projectId) from Firebase Console -> Realtime Database to enable multiplayer.
+  FIREBASE_CONFIG: {
+    apiKey: '',
+    authDomain: '',
+    databaseURL: '',
+    projectId: ''
+  }
 };

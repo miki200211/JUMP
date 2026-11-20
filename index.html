@@ -9,7 +9,7 @@
 
   <!-- Styling -->
   <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
-  <link rel="stylesheet" href="assets/css/game.css?v=3.0.0">
+  <link rel="stylesheet" href="assets/css/game.css?v=3.1.0">
 
   <!-- Three.js ES Module Import Map -->
   <script type="importmap">
@@ -142,11 +142,16 @@
           <button type="button" class="rpg-hud-btn" id="rpg-auth-btn">🔐 登入帳號</button>
           <button type="button" class="rpg-hud-btn" id="rpg-customize-btn">🎨 捏角色</button>
           <button type="button" class="rpg-hud-btn" id="rpg-bag-btn">🎒 裝備</button>
+          <button type="button" class="rpg-hud-btn" id="rpg-party-btn">👥 隊伍</button>
         </div>
+
+        <!-- Party Teammates Live HP List -->
+        <div class="rpg-party-hud" id="rpg-party-hud" hidden></div>
       </div>
 
       <!-- Top-Right Zone Badge & Radar Minimap -->
       <div class="rpg-hud-top-right">
+        <div id="rpg-net-badge" class="rpg-net-badge">⚪ 單機模式</div>
         <div id="rpg-zone-badge">🌿 精靈村莊（安全區）</div>
         <div class="rpg-minimap-wrap">
           <canvas id="rpg-minimap" width="126" height="126"></canvas>
@@ -158,8 +163,15 @@
         </div>
       </div>
 
-      <!-- Floating Toast & Merchant Prompt -->
+      <!-- Floating Toast, Party Invite Banner & Merchant Prompt -->
       <div id="rpg-toast" hidden></div>
+      <div class="rpg-invite-banner" id="rpg-invite-banner" hidden>
+        <span id="rpg-invite-text">🤝 玩家邀請你組隊</span>
+        <div class="rpg-invite-actions">
+          <button type="button" class="rpg-invite-accept" id="rpg-invite-accept">接受</button>
+          <button type="button" class="rpg-invite-decline" id="rpg-invite-decline">拒絕</button>
+        </div>
+      </div>
       <button type="button" id="rpg-shop-prompt" hidden>🧝 按 [G] 或點擊與精靈商人交易</button>
 
       <!-- Bottom Skill Hotbar -->
@@ -351,13 +363,36 @@
     </div>
   </dialog>
 
+  <!-- Party & Multiplayer Dialog -->
+  <dialog class="modal-dialog" id="rpg-party-dialog" aria-label="隊伍與多人連線">
+    <div class="rpg-dialog-card">
+      <button type="button" class="modal-close-x" id="rpg-party-close" aria-label="關閉">&times;</button>
+      <h2>👥 隊伍與多人對戰</h2>
+      <p class="rpg-dialog-sub">同隊免傷、共享經驗金幣、水系技能可互補；村莊外非同隊可自由 PvP 對打！</p>
+
+      <div class="rpg-party-status-box" id="rpg-party-status-box"></div>
+
+      <div class="rpg-party-actions" id="rpg-party-actions">
+        <button type="button" class="rpg-primary-btn" id="rpg-create-party-btn">✨ 建立新隊伍</button>
+        <div class="rpg-join-code-row">
+          <input type="text" id="rpg-join-code-input" placeholder="輸入 4 碼隊伍代碼加入" maxlength="8">
+          <button type="button" class="rpg-buy-btn" id="rpg-join-party-btn">加入</button>
+        </div>
+        <button type="button" class="rpg-danger-btn" id="rpg-leave-party-btn" hidden>退出目前隊伍</button>
+      </div>
+
+      <h3 class="rpg-section-title">🌍 地圖上的其他冒險者</h3>
+      <div class="rpg-item-list" id="rpg-online-players-list"></div>
+    </div>
+  </dialog>
+
   <!-- Chat JavaScript Modules -->
-  <script src="assets/js/config.js?v=2.2.1"></script>
+  <script src="assets/js/config.js?v=3.1.0"></script>
   <script src="assets/js/emoji.js?v=2.0.0"></script>
   <script src="assets/js/api.js?v=2.2.0"></script>
   <script src="assets/js/chat.js?v=2.2.0"></script>
 
   <!-- 3D Fantasy RPG ES Module Entry -->
-  <script type="module" src="assets/js/game/main.js?v=3.0.0"></script>
+  <script type="module" src="assets/js/game/main.js?v=3.1.0"></script>
 </body>
 </html>

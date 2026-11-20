@@ -140,15 +140,19 @@ export const MATERIALS = {
 };
 
 /**
- * Equipment, Potions & Endgame Craft-Only Mythic Arsenal
- * - shop items have significantly higher gold prices for true progression
- * - craftOnly: true items CANNOT be bought with gold alone; players must hunt bosses & craft at the Dwarf Blacksmith!
+ * Equipment, Potions & Tier-by-Tier Monster Hunter Forging Tree (T0 → T9)
+ * - Every weapon above wood_sword (T0) and every armor above cloth_tunic (T0) MUST be
+ *   forged step-by-step from the bottom up at the Dwarf Blacksmith!
+ * - Higher tiers require owning their prerequisite lower-tier equipment (`requiresItems`)
+ *   plus hunting materials from progressively deadlier biomes & bosses.
  */
 export const SHOP_ITEMS = {
-  // === Starter & Gold Shop Weapons (Pricier Progression!) ===
+  // === T0 Starter Weapon (Free Base Frame) ===
   wood_sword: {
     id: 'wood_sword',
     category: 'weapon',
+    tier: 0,
+    tierLabel: 'T0 起點',
     name: '新手木劍',
     price: 0,
     atk: 14,
@@ -157,65 +161,102 @@ export const SHOP_ITEMS = {
     style: 'sword',
     color: '#a16207',
     glow: null,
-    desc: '精靈村莊配發的基礎木劍。'
+    desc: '精靈村莊配發的基礎木劍，是所有神兵鍛造樹的起點。'
   },
+
+  // === T1 → T9 Bottom-Up Monster Hunter Weapon Forge Tree ===
   elf_rapier: {
     id: 'elf_rapier',
     category: 'weapon',
+    craftOnly: true,
+    tier: 1,
+    tierLabel: 'T1 入門',
+    rarity: 'common',
+    requiresItems: ['wood_sword'],
+    craftGold: 350,
+    recipe: { greenskin_fang: 4 },
     name: '精靈銀細劍',
-    price: 420,
+    price: 0,
     atk: 30,
     bonusMp: 18,
     elementBonus: { type: 'water', mult: 1.25 },
     style: 'rapier',
     color: '#e0f2fe',
     glow: '#38bdf8',
-    desc: '輕盈鋒利的精靈鍛造刺劍，水系技能傷害與治療 +25%。'
+    desc: '【T1 鍛造】由新手木劍強化而來的精靈刺劍，水系傷害與治療 +25%。'
   },
   flame_blade: {
     id: 'flame_blade',
     category: 'weapon',
+    craftOnly: true,
+    tier: 2,
+    tierLabel: 'T2 進階',
+    rarity: 'uncommon',
+    requiresItems: ['elf_rapier'],
+    craftGold: 750,
+    recipe: { greenskin_fang: 7, plague_ichor: 3 },
     name: '烈焰符文長劍',
-    price: 880,
+    price: 0,
     atk: 48,
     bonusMp: 20,
     elementBonus: { type: 'fire', mult: 1.35 },
     style: 'sword',
     color: '#f97316',
     glow: '#fb923c',
-    desc: '劍身纏繞精靈火焰符文，火球傷害 +35%（壓制巨魔與九頭蛇回血利器）。'
+    desc: '【T2 鍛造】由精靈銀細劍衍生，火球傷害 +35%（壓制巨魔與九頭蛇回血利器）。'
   },
   storm_staff: {
     id: 'storm_staff',
     category: 'weapon',
+    craftOnly: true,
+    tier: 2,
+    tierLabel: 'T2 進階',
+    rarity: 'uncommon',
+    requiresItems: ['elf_rapier'],
+    craftGold: 900,
+    recipe: { greenskin_fang: 6, plague_ichor: 4 },
     name: '暴風雷鳴法杖',
-    price: 1150,
+    price: 0,
     atk: 54,
     bonusMp: 65,
     elementBonus: { type: 'lightning', mult: 1.4 },
     style: 'staff',
     color: '#38bdf8',
     glow: '#7dd3fc',
-    desc: '引動天雷的古樹結晶法杖，魔力上限 +65、雷電連鎖傷害 +40%。'
+    desc: '【T2 鍛造・雷系分支】由精靈銀細劍衍生，魔力 +65、雷電連鎖傷害 +40%。'
   },
   titan_hammer: {
     id: 'titan_hammer',
     category: 'weapon',
+    craftOnly: true,
+    tier: 3,
+    tierLabel: 'T3 精銳',
+    rarity: 'rare',
+    requiresItems: ['flame_blade'],
+    craftGold: 1350,
+    recipe: { greenskin_fang: 10, plague_ichor: 5 },
     name: '泰坦碎地戰錘',
-    price: 1480,
-    atk: 66,
+    price: 0,
+    atk: 68,
     bonusMp: 25,
     elementBonus: { type: 'earth', mult: 1.42 },
     style: 'hammer',
     color: '#a8a29e',
     glow: '#eab308',
-    desc: '能與食人魔正面硬撼的巨錘，地系突刺傷害 +42%。'
+    desc: '【T3 鍛造】由烈焰符文長劍重鍛而成的巨錘，地系突刺傷害 +42%。'
   },
   lathander_mace: {
     id: 'lathander_mace',
     category: 'weapon',
+    craftOnly: true,
+    tier: 3,
+    tierLabel: 'T3 精銳',
+    rarity: 'rare',
+    requiresItems: ['titan_hammer'],
+    craftGold: 1950,
+    recipe: { plague_ichor: 8, vampire_heart: 3 },
     name: '🌅 洛山達之血・聖光晨星錘',
-    price: 2250,
+    price: 0,
     atk: 86,
     bonusMp: 45,
     undeadSlayer: 1.45,
@@ -223,31 +264,39 @@ export const SHOP_ITEMS = {
     style: 'hammer',
     color: '#fde047',
     glow: '#f59e0b',
-    desc: '【柏德之門聖物】蘊含晨曦之主神輝的聖錘，對不死族傷害 145%、火系 +40%。'
+    desc: '【T3 進階・柏德之門聖物】由泰坦碎地戰錘昇華，對不死族 145%、火系 +40%。'
   },
   dawnbreaker: {
     id: 'dawnbreaker',
     category: 'weapon',
+    craftOnly: true,
+    tier: 4,
+    tierLabel: 'T4 聖物',
+    rarity: 'rare',
+    requiresItems: ['lathander_mace'],
+    craftGold: 2600,
+    recipe: { plague_ichor: 10, vampire_heart: 5, balduran_mithral: 1 },
     name: '☀️ 破曉者（上古魔神聖劍）',
-    price: 3100,
-    atk: 102,
+    price: 0,
+    atk: 105,
     bonusMp: 50,
     undeadSlayer: 1.65,
     elementBonus: { type: 'fire', mult: 1.48 },
     style: 'sword',
     color: '#fef08a',
     glow: '#f59e0b',
-    desc: '【上古卷軸神器】美瑞蒂雅賜予的聖光之劍，對殭屍、屍鬼與吸血鬼造成 165% 聖炎傷害！'
+    desc: '【T4 鍛造・上古卷軸神器】由洛山達之血淬鍊，對殭屍、屍鬼與吸血鬼造成 165% 聖炎傷害！'
   },
-
-  // === CRAFT-ONLY Mythic Weapons (Must Hunt Materials & Forge at Dwarf Blacksmith!) ===
   daedric_greatsword: {
     id: 'daedric_greatsword',
     category: 'weapon',
     craftOnly: true,
+    tier: 5,
+    tierLabel: 'T5 史詩',
     rarity: 'epic',
-    craftGold: 950,
-    recipe: { vampire_heart: 2, plague_ichor: 3, greenskin_fang: 4 },
+    requiresItems: ['dawnbreaker', 'storm_staff'],
+    craftGold: 3400,
+    recipe: { vampire_heart: 6, plague_ichor: 12, olympus_bronze: 4 },
     name: '🩸 魔族湮滅巨劍（Daedric）',
     price: 0,
     atk: 132,
@@ -257,53 +306,62 @@ export const SHOP_ITEMS = {
     style: 'greatsword',
     color: '#18181b',
     glow: '#dc2626',
-    desc: '【鍛造限定・上古卷軸】以真祖鮮血之心與屍毒結晶鍛造的黑紅魔劍，附帶 3% 鮮血汲取！'
+    desc: '【T5 融合鍛造・上古卷軸】熔合「破曉者 + 暴風雷鳴法杖」與真祖血心鍛造，附帶 3% 鮮血汲取！'
   },
   poseidon_trident: {
     id: 'poseidon_trident',
     category: 'weapon',
     craftOnly: true,
+    tier: 6,
+    tierLabel: 'T6 神話',
     rarity: 'epic',
-    craftGold: 1350,
-    recipe: { olympus_bronze: 3, abyssal_pearl: 2, hydra_venom_gland: 1 },
+    requiresItems: ['daedric_greatsword'],
+    craftGold: 4400,
+    recipe: { olympus_bronze: 8, abyssal_pearl: 4, hydra_venom_gland: 3 },
     name: '🔱 波賽頓海神三叉戟',
     price: 0,
-    atk: 152,
+    atk: 154,
     bonusMp: 75,
     lifestealBonus: 0.03,
     elementBonus: { type: 'water', mult: 1.75 },
     style: 'trident',
     color: '#06b6d4',
     glow: '#22d3ee',
-    desc: '【鍛造限定・古希臘神話】統御深海的三叉戟，水系傷害與治療 +75%、吸血 3%！'
+    desc: '【T6 鍛造・古希臘神話】由魔族湮滅巨劍晉升，水系傷害與治療 +75%、吸血 3%！'
   },
   zeus_bolt: {
     id: 'zeus_bolt',
     category: 'weapon',
     craftOnly: true,
+    tier: 6,
+    tierLabel: 'T6 神話',
     rarity: 'epic',
-    craftGold: 1650,
-    recipe: { olympus_bronze: 4, storm_dragon_pearl: 2, balduran_mithral: 1 },
+    requiresItems: ['poseidon_trident'],
+    craftGold: 5500,
+    recipe: { olympus_bronze: 10, storm_dragon_pearl: 4, balduran_mithral: 3 },
     name: '⚡ 宙斯雷霆神矛（Master Bolt）',
     price: 0,
-    atk: 176,
+    atk: 178,
     bonusMp: 95,
     elementBonus: { type: 'lightning', mult: 1.9 },
     style: 'spear',
     color: '#fef08a',
     glow: '#38bdf8',
-    desc: '【鍛造限定・奧林帕斯至高神器】宙斯雷霆長矛，雷電天罰傷害 +90%！'
+    desc: '【T6 進階・奧林帕斯至高神器】由波賽頓三叉戟昇華，雷電天罰傷害 +90%！'
   },
   kusanagi_katana: {
     id: 'kusanagi_katana',
     category: 'weapon',
     craftOnly: true,
+    tier: 7,
+    tierLabel: 'T7 遠古',
     rarity: 'mythic',
-    craftGold: 1950,
-    recipe: { orochi_kusanagi_shard: 2, yokai_spirit_orb: 3, balduran_mithral: 2 },
+    requiresItems: ['zeus_bolt'],
+    craftGold: 6800,
+    recipe: { orochi_kusanagi_shard: 4, yokai_spirit_orb: 8, balduran_mithral: 4 },
     name: '⛩️ 天叢雲劍・草薙（Kusanagi）',
     price: 0,
-    atk: 198,
+    atk: 200,
     bonusMp: 70,
     lifestealBonus: 0.03,
     bossSlayer: 1.25,
@@ -311,72 +369,91 @@ export const SHOP_ITEMS = {
     style: 'katana',
     color: '#f8fafc',
     glow: '#c084fc',
-    desc: '【鍛造限定・日本神話三神器】自八岐大蛇尾斬獲的神刀，全元素傷害 +45%、吸血 3%、對 Boss +25% 傷害！'
+    desc: '【T7 鍛造・日本三神器】由宙斯雷霆神矛衍生，全元素 +45%、吸血 3%、對 Boss 125% 傷！'
   },
   kukulkan_spear: {
     id: 'kukulkan_spear',
     category: 'weapon',
     craftOnly: true,
+    tier: 7,
+    tierLabel: 'T7 遠古',
     rarity: 'mythic',
-    craftGold: 2100,
-    recipe: { mayan_sun_jade: 3, storm_dragon_pearl: 2, dragon_scale: 1 },
+    requiresItems: ['zeus_bolt'],
+    craftGold: 7200,
+    recipe: { mayan_sun_jade: 7, dragon_scale: 4, storm_dragon_pearl: 4 },
     name: '🪶 羽蛇神太陽神槍（Kukulkan）',
     price: 0,
-    atk: 206,
+    atk: 210,
     bonusMp: 90,
     elementBonus: { type: 'fire', mult: 1.95 },
     bossSlayer: 1.25,
     style: 'spear',
     color: '#10b981',
     glow: '#fde047',
-    desc: '【鍛造限定・馬雅太陽神兵】鑲嵌羽蛇神翡翠的黃金長槍，火系灼燒傷害 +95%、對 Boss +25% 傷！'
+    desc: '【T7 鍛造・馬雅太陽神兵】由宙斯雷霆神矛衍生，火系灼燒 +95%、對 Boss 125% 傷！'
   },
   necronomicon_staff: {
     id: 'necronomicon_staff',
     category: 'weapon',
     craftOnly: true,
+    tier: 7,
+    tierLabel: 'T7 遠古',
     rarity: 'mythic',
-    craftGold: 2350,
-    recipe: { eldritch_eye: 3, abyssal_pearl: 2, balduran_mithral: 2 },
+    requiresItems: ['poseidon_trident', 'zeus_bolt'],
+    craftGold: 7800,
+    recipe: { eldritch_eye: 6, abyssal_pearl: 6, balduran_mithral: 5 },
     name: '🐙 拉萊耶死靈魔導權杖（Cthulhu）',
     price: 0,
-    atk: 214,
+    atk: 218,
     bonusMp: 160,
     lifestealBonus: 0.04,
     elementBonus: { type: 'all', mult: 1.65 },
     style: 'tome_staff',
     color: '#a855f7',
     glow: '#22c55e',
-    desc: '【鍛造限定・克蘇魯舊日秘寶】凝視深淵的瘋狂法杖，魔力 +160、全技能傷害 +65%、吸血 4%！'
+    desc: '【T7 融合・克蘇魯舊日秘寶】熔合海神與雷神神器，魔力 +160、全技能 +65%、吸血 4%！'
   },
   balduran_giantslayer: {
     id: 'balduran_giantslayer',
     category: 'weapon',
     craftOnly: true,
+    tier: 8,
+    tierLabel: 'T8 傳說',
     rarity: 'mythic',
-    craftGold: 2650,
-    recipe: { balduran_mithral: 3, dragon_scale: 2, olympus_bronze: 3, frost_dragon_heart: 1 },
+    requiresItems: ['kusanagi_katana', 'kukulkan_spear'],
+    craftGold: 9800,
+    recipe: { balduran_mithral: 7, dragon_scale: 6, frost_dragon_heart: 5, olympus_bronze: 12 },
     name: '⚔️ 柏德安屠龍巨劍（Giantslayer）',
     price: 0,
-    atk: 245,
+    atk: 252,
     bonusMp: 60,
     bossSlayer: 1.45,
-    elementBonus: { type: 'all', mult: 1.4 },
+    elementBonus: { type: 'all', mult: 1.45 },
     style: 'dragon_blade',
     color: '#fbbf24',
     glow: '#f59e0b',
-    desc: '【鍛造限定・柏德之門 3 傳說巨劍】斬殺巨龍與泰坦的傳奇聖劍，對所有 Boss 造成 145% 毀滅傷害！'
+    desc: '【T8 融合・柏德之門 3 傳說巨劍】融合「天叢雲劍 + 羽蛇神槍」與雙龍核心，對所有 Boss 造成 145% 毀滅傷害！'
   },
   fatalis_blade: {
     id: 'fatalis_blade',
     category: 'weapon',
     craftOnly: true,
+    tier: 9,
+    tierLabel: 'T9 終極神兵',
     rarity: 'mythic',
-    craftGold: 4200,
-    recipe: { dragon_scale: 3, frost_dragon_heart: 2, storm_dragon_pearl: 2, eldritch_eye: 2, balduran_mithral: 4 },
+    requiresItems: ['balduran_giantslayer', 'necronomicon_staff'],
+    craftGold: 16000,
+    recipe: {
+      dragon_scale: 8,
+      frost_dragon_heart: 7,
+      storm_dragon_pearl: 7,
+      eldritch_eye: 7,
+      orochi_kusanagi_shard: 4,
+      balduran_mithral: 10
+    },
     name: '🐉 黑龍滅盡・終焉屠神大劍（Fatalis）',
     price: 0,
-    atk: 320,
+    atk: 330,
     bonusMp: 120,
     lifestealBonus: 0.05,
     bossSlayer: 1.55,
@@ -385,75 +462,104 @@ export const SHOP_ITEMS = {
     style: 'dragon_blade',
     color: '#09090b',
     glow: '#ef4444',
-    desc: '【終極魔物獵人鍛造神兵】融合三古龍逆鱗與舊日魔眼的禁忌巨劍！全元素 +85%、吸血 5%、對 Boss 155% 傷！'
+    desc: '【T9 頂點・終極魔物獵人神兵】集結全鍛造樹「柏德安巨劍 + 克蘇魯權杖」與三古龍逆鱗！全元素 +85%、吸血 5%、對 Boss 155% 傷！'
   },
 
-  // === Starter & Gold Shop Armors ===
+  // === T0 Starter Armor (Free Base Frame) ===
   cloth_tunic: {
     id: 'cloth_tunic',
     category: 'armor',
+    tier: 0,
+    tierLabel: 'T0 起點',
     name: '旅人布衣',
     price: 0,
     def: 2,
     bonusHp: 0,
     tint: null,
-    desc: '輕便的冒險者服裝。'
+    desc: '輕便的冒險者服裝，是所有防具鍛造樹的起點。'
   },
+
+  // === T1 → T9 Bottom-Up Monster Hunter Armor Forge Tree ===
   elf_leather: {
     id: 'elf_leather',
     category: 'armor',
+    craftOnly: true,
+    tier: 1,
+    tierLabel: 'T1 入門',
+    rarity: 'common',
+    requiresItems: ['cloth_tunic'],
+    craftGold: 350,
+    recipe: { greenskin_fang: 4 },
     name: '精靈翠綠皮甲',
-    price: 460,
+    price: 0,
     def: 12,
     bonusHp: 90,
     tint: '#10b981',
-    desc: '以古樹纖維編織，提升血量 +90、防禦 +12。'
+    desc: '【T1 鍛造】由旅人布衣強化編織而成，血量 +90、防禦 +12。'
   },
   mithril_plate: {
     id: 'mithril_plate',
     category: 'armor',
+    craftOnly: true,
+    tier: 2,
+    tierLabel: 'T2 進階',
+    rarity: 'uncommon',
+    requiresItems: ['elf_leather'],
+    craftGold: 1050,
+    recipe: { greenskin_fang: 8, plague_ichor: 5 },
     name: '烏木重鎧（Ebony Armor）',
-    price: 1280,
+    price: 0,
     def: 26,
     bonusHp: 220,
     tint: '#334155',
-    desc: '【上古卷軸名甲】深邃烏木鍛造，血量 +220、防禦 +26。'
+    desc: '【T2 鍛造・上古卷軸名甲】由精靈翠綠皮甲重鑄，血量 +220、防禦 +26。'
   },
   helldusk_armor: {
     id: 'helldusk_armor',
     category: 'armor',
+    craftOnly: true,
+    tier: 3,
+    tierLabel: 'T3 精銳',
+    rarity: 'rare',
+    requiresItems: ['mithril_plate'],
+    craftGold: 2200,
+    recipe: { plague_ichor: 9, vampire_heart: 4 },
     name: '🔥 黯獄重甲（Helldusk Armor）',
-    price: 2600,
+    price: 0,
     def: 42,
     bonusHp: 420,
     tint: '#7f1d1d',
     poisonResist: 0.35,
-    desc: '【柏德之門名鎧】地獄鍛造的暗紅重鎧，血量 +420、防禦 +42、異常抗性 +35%。'
+    desc: '【T3 鍛造・柏德之門名鎧】由烏木重鎧地獄淬火而成，血量 +420、防禦 +42、異常抗性 +35%。'
   },
-
-  // === CRAFT-ONLY Mythic Armors ===
   dragon_armor: {
     id: 'dragon_armor',
     category: 'armor',
     craftOnly: true,
+    tier: 4,
+    tierLabel: 'T4 聖物',
     rarity: 'epic',
-    craftGold: 1200,
-    recipe: { dragon_scale: 2, greenskin_fang: 4, plague_ichor: 2 },
+    requiresItems: ['helldusk_armor'],
+    craftGold: 3500,
+    recipe: { dragon_scale: 4, greenskin_fang: 10, vampire_heart: 5 },
     name: '🐉 龍骨霸王鎧（Dragonbone）',
     price: 0,
     def: 56,
     bonusHp: 580,
     tint: '#dc2626',
     poisonResist: 0.45,
-    desc: '【鍛造限定・上古卷軸】以古龍逆鱗鍛造，血量 +580、防禦 +56、屍毒與劇毒抗性 +45%！'
+    desc: '【T4 鍛造・上古卷軸】由黯獄重甲鑲嵌古龍逆鱗鍛造，血量 +580、防禦 +56、抗毒 +45%！'
   },
   aegis_armor: {
     id: 'aegis_armor',
     category: 'armor',
     craftOnly: true,
+    tier: 5,
+    tierLabel: 'T5 史詩',
     rarity: 'epic',
-    craftGold: 1650,
-    recipe: { olympus_bronze: 4, hydra_venom_gland: 2, balduran_mithral: 1 },
+    requiresItems: ['dragon_armor'],
+    craftGold: 4800,
+    recipe: { olympus_bronze: 10, hydra_venom_gland: 4, balduran_mithral: 3 },
     name: '🏛️ 雅典娜埃吉斯黃金神鎧（Aegis）',
     price: 0,
     def: 72,
@@ -461,15 +567,18 @@ export const SHOP_ITEMS = {
     tint: '#facc15',
     poisonResist: 0.5,
     passiveRegen: 6,
-    desc: '【鍛造限定・古希臘神話】奧林帕斯黃金神鎧，血量 +760、防禦 +72、每秒回血 +6、抗石化劇毒 50%！'
+    desc: '【T5 鍛造・古希臘神話】由龍骨霸王鎧昇華，血量 +760、防禦 +72、每秒回血 +6、抗異常 50%！'
   },
   yokai_shogun_armor: {
     id: 'yokai_shogun_armor',
     category: 'armor',
     craftOnly: true,
+    tier: 6,
+    tierLabel: 'T6 神話',
     rarity: 'mythic',
-    craftGold: 1900,
-    recipe: { yokai_spirit_orb: 3, orochi_kusanagi_shard: 1, balduran_mithral: 2 },
+    requiresItems: ['aegis_armor'],
+    craftGold: 6200,
+    recipe: { yokai_spirit_orb: 8, orochi_kusanagi_shard: 3, balduran_mithral: 4 },
     name: '⛩️ 妖狐百鬼大將軍神鎧',
     price: 0,
     def: 78,
@@ -477,15 +586,18 @@ export const SHOP_ITEMS = {
     tint: '#991b1b',
     speedBonus: 0.16,
     poisonResist: 0.45,
-    desc: '【鍛造限定・日本百鬼】緋紅妖狐武士大鎧，血量 +820、防禦 +78、移動速度 +16%！'
+    desc: '【T6 鍛造・日本百鬼】由埃吉斯神鎧鍛造，血量 +820、防禦 +78、移動速度 +16%！'
   },
   cthulhu_starspawn_armor: {
     id: 'cthulhu_starspawn_armor',
     category: 'armor',
     craftOnly: true,
+    tier: 7,
+    tierLabel: 'T7 遠古',
     rarity: 'mythic',
-    craftGold: 2250,
-    recipe: { eldritch_eye: 3, abyssal_pearl: 3, balduran_mithral: 2 },
+    requiresItems: ['aegis_armor'],
+    craftGold: 7400,
+    recipe: { eldritch_eye: 6, abyssal_pearl: 7, balduran_mithral: 5 },
     name: '🐙 舊日星辰・深淵克蘇魯神鎧',
     price: 0,
     def: 88,
@@ -493,40 +605,51 @@ export const SHOP_ITEMS = {
     tint: '#4c1d95',
     poisonResist: 0.6,
     passiveRegen: 10,
-    desc: '【鍛造限定・克蘇魯神話】深淵星辰編織的魔神鎧，血量 +980、防禦 +88、每秒回血 +10、抗異常 60%！'
+    desc: '【T7 鍛造・克蘇魯神話】由埃吉斯神鎧浸潤深淵星辰，血量 +980、防禦 +88、每秒回血 +10！'
   },
   mayan_sunplate_armor: {
     id: 'mayan_sunplate_armor',
     category: 'armor',
     craftOnly: true,
+    tier: 8,
+    tierLabel: 'T8 傳說',
     rarity: 'mythic',
-    craftGold: 2400,
-    recipe: { mayan_sun_jade: 3, olympus_bronze: 3, balduran_mithral: 2 },
+    requiresItems: ['yokai_shogun_armor'],
+    craftGold: 8800,
+    recipe: { mayan_sun_jade: 8, olympus_bronze: 10, balduran_mithral: 6 },
     name: '🗿 馬雅太陽神翡翠黃金戰甲',
     price: 0,
-    def: 94,
-    bonusHp: 1080,
+    def: 96,
+    bonusHp: 1120,
     tint: '#047857',
     poisonResist: 0.58,
     passiveRegen: 12,
-    desc: '【鍛造限定・馬雅神話】羽蛇神太陽翡翠神鎧，血量 +1080、防禦 +94、每秒自動回血 +12！'
+    desc: '【T8 鍛造・馬雅神話】由百鬼大將軍神鎧鍛鑄太陽翡翠，血量 +1120、防禦 +96、每秒自動回血 +12！'
   },
   tridragon_sovereign_armor: {
     id: 'tridragon_sovereign_armor',
     category: 'armor',
     craftOnly: true,
+    tier: 9,
+    tierLabel: 'T9 終極神鎧',
     rarity: 'mythic',
-    craftGold: 4000,
-    recipe: { dragon_scale: 3, frost_dragon_heart: 3, storm_dragon_pearl: 3, balduran_mithral: 4 },
+    requiresItems: ['cthulhu_starspawn_armor', 'mayan_sunplate_armor'],
+    craftGold: 15500,
+    recipe: {
+      dragon_scale: 8,
+      frost_dragon_heart: 8,
+      storm_dragon_pearl: 8,
+      balduran_mithral: 10
+    },
     name: '👑 三龍神威・天災古龍霸王神鎧',
     price: 0,
-    def: 128,
-    bonusHp: 1550,
+    def: 132,
+    bonusHp: 1600,
     tint: '#1e1b4b',
     speedBonus: 0.14,
     poisonResist: 0.68,
     passiveRegen: 18,
-    desc: '【終極魔物獵人防具】熔煉煉獄／冰霜／蒼穹三大古龍核心！血量 +1550、防禦 +128、移速 +14%、每秒回血 +18！'
+    desc: '【T9 頂點・終極魔物獵人防具】熔合「克蘇魯神鎧 + 馬雅太陽神甲」與三大古龍核心！血量 +1600、防禦 +132、移速 +14%、回血 +18/s！'
   },
 
   // === Consumables & Alchemist Potions ===
@@ -550,6 +673,24 @@ export const SHOP_ITEMS = {
     healPct: 0.32,
     desc: '回復 45 + 32% 最大魔力值（冷卻 1.2 秒，快捷鍵 2）。'
   },
+  hp_potion_pack: {
+    id: 'hp_potion_pack',
+    category: 'consumable',
+    name: '📦 獵人補給箱：生命聖水 ×5',
+    price: 390,
+    potionKey: 'hp',
+    grantCount: 5,
+    desc: '一次補給 5 瓶精靈生命聖水，遠征 Boss 區必備！'
+  },
+  mp_potion_pack: {
+    id: 'mp_potion_pack',
+    category: 'consumable',
+    name: '📦 獵人補給箱：魔力藥水 ×5',
+    price: 340,
+    potionKey: 'mp',
+    grantCount: 5,
+    desc: '一次補給 5 瓶精靈魔力藥水，維持技能連招不斷檔！'
+  },
   mega_hp_potion: {
     id: 'mega_hp_potion',
     category: 'alchemist',
@@ -571,9 +712,9 @@ export const SHOP_ITEMS = {
     id: 'mithral_pouch',
     category: 'alchemist',
     name: '✨ 柏德安秘銀結晶（鍛造素材 ×1）',
-    price: 1450,
+    price: 2600,
     instantEffect: 'grant_mithral',
-    desc: '【柏德之門稀世礦石】直接購入 1 顆「✨ 柏德安秘銀礦石」用於鐵匠鍛造神兵。'
+    desc: '【柏德之門稀世礦石】直接購入 1 顆「✨ 柏德安秘銀礦石」用於高階神兵鍛造（亦可打 Boss 或開山洞秘寶箱獲得）。'
   }
 };
 

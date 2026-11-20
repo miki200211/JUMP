@@ -9,7 +9,7 @@
 
   <!-- Styling -->
   <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
-  <link rel="stylesheet" href="assets/css/game.css?v=4.1.0">
+  <link rel="stylesheet" href="assets/css/game.css?v=4.4.0">
 
   <!-- Three.js ES Module Import Map -->
   <script type="importmap">
@@ -425,17 +425,17 @@
   </dialog>
 
   <!-- Elf Merchant Shop Dialog -->
-  <dialog class="modal-dialog" id="rpg-shop-dialog" aria-label="精靈村莊裝備商店">
+  <dialog class="modal-dialog" id="rpg-shop-dialog" aria-label="精靈村莊補給商店">
     <div class="rpg-dialog-card">
       <button type="button" class="modal-close-x" id="rpg-shop-close" aria-label="關閉">&times;</button>
-      <h2>🧝 精靈村莊裝備商店</h2>
-      <p class="rpg-dialog-sub">「歡迎來到生命古樹庇護的精靈村，挑一把趁手的武器吧！」</p>
+      <h2>🧝 精靈村莊補給商店</h2>
+      <p class="rpg-dialog-sub">「這裡提供冒險必備的生命聖水與魔力補給！武器與防具請找 ⚒️ 矮人鐵匠 從最底層一層一層鍛造！」</p>
       <div class="rpg-shop-gold-pill">💰 目前金幣：<span id="rpg-shop-gold">0 G</span></div>
 
       <div class="rpg-tab-row">
-        <button type="button" class="rpg-tab-btn rpg-shop-tab active" data-cat="weapon">⚔️ 武器</button>
-        <button type="button" class="rpg-tab-btn rpg-shop-tab" data-cat="armor">🛡️ 防具</button>
-        <button type="button" class="rpg-tab-btn rpg-shop-tab" data-cat="consumable">🧪 藥水</button>
+        <button type="button" class="rpg-tab-btn rpg-shop-tab active" data-cat="consumable">🧪 補給藥水</button>
+        <button type="button" class="rpg-tab-btn rpg-shop-tab" data-cat="weapon">⚔️ 武器樹</button>
+        <button type="button" class="rpg-tab-btn rpg-shop-tab" data-cat="armor">🛡️ 防具樹</button>
       </div>
 
       <div class="rpg-item-list" id="rpg-shop-list"></div>
@@ -484,17 +484,17 @@
     </div>
   </dialog>
 
-  <!-- Dwarf Blacksmith Forge Dialog (Monster Hunter × Baldur's Gate Material Crafting!) -->
+  <!-- Dwarf Blacksmith Forge Dialog (Monster Hunter × Baldur's Gate Tier-by-Tier Forge Tree!) -->
   <dialog class="modal-dialog" id="rpg-forge-dialog" aria-label="矮人鐵匠神兵鍛造工坊">
     <div class="rpg-dialog-card rpg-forge-card">
       <button type="button" class="modal-close-x" id="rpg-forge-close" aria-label="關閉">&times;</button>
-      <h2>⚒️ 矮人傳奇鐵匠・魔物獵人神兵鍛造工坊</h2>
-      <p class="rpg-dialog-sub">「真正的頂級神兵無法用金幣直接買到！狩獵全球神話巨獸帶回素材，我來幫你打造傳說！」</p>
+      <h2>⚒️ 矮人傳奇鐵匠・魔物獵人逐層鍛造樹（T0 → T9）</h2>
+      <p class="rpg-dialog-sub">「神兵無法跳級！必須從最底層 T0 新手木劍／旅人布衣開始狩獵素材，一層一層衍生鍛造至 T9 終極神兵！」</p>
       <div class="rpg-shop-gold-pill">💰 目前金幣：<span id="rpg-forge-gold">0 G</span></div>
 
       <div class="rpg-tab-row">
-        <button type="button" class="rpg-tab-btn rpg-forge-tab active" data-cat="weapon">⚔️ 鍛造頂級武器</button>
-        <button type="button" class="rpg-tab-btn rpg-forge-tab" data-cat="armor">🛡️ 鍛造神話防具</button>
+        <button type="button" class="rpg-tab-btn rpg-forge-tab active" data-cat="weapon">⚔️ 武器鍛造樹 (T1→T9)</button>
+        <button type="button" class="rpg-tab-btn rpg-forge-tab" data-cat="armor">🛡️ 防具鍛造樹 (T1→T9)</button>
       </div>
 
       <div class="rpg-item-list" id="rpg-forge-list"></div>
@@ -535,6 +535,6 @@
   <script src="assets/js/chat.js?v=3.3.0"></script>
 
   <!-- 3D Fantasy RPG ES Module Entry -->
-  <script type="module" src="assets/js/game/main.js?v=4.3.0"></script>
+  <script type="module" src="assets/js/game/main.js?v=4.4.0"></script>
 </body>
 </html>

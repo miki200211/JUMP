@@ -1096,9 +1096,94 @@
   line-height: 1.4;
 }
 
-/* Blacksmith Forge & World Codex Styles (Monster Hunter × Baldur's Gate) */
+/* Blacksmith Forge & World Codex Styles (Monster Hunter × Baldur's Gate Tier Tree) */
 .rpg-forge-card {
-  max-width: 620px;
+  max-width: 650px;
+}
+
+.rpg-forge-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  margin-bottom: 0.35rem;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  font-size: 0.82rem;
+  color: #e0e7ff;
+}
+
+.rpg-forge-progress strong {
+  color: #fde047;
+}
+
+.rpg-shop-forge-redirect {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1.15rem;
+  border-radius: 16px;
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  background: linear-gradient(135deg, rgba(67, 20, 7, 0.38), rgba(30, 27, 58, 0.72));
+}
+
+.rpg-tier-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.1rem 0.48rem;
+  border-radius: 6px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+  background: rgba(148, 163, 184, 0.25);
+  border: 1px solid rgba(203, 213, 225, 0.45);
+  color: #f1f5f9;
+}
+
+.rpg-tier-badge.tier-2 {
+  background: rgba(16, 185, 129, 0.24);
+  border-color: rgba(52, 211, 153, 0.55);
+  color: #6ee7b7;
+}
+
+.rpg-tier-badge.tier-3,
+.rpg-tier-badge.tier-4 {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #7dd3fc;
+}
+
+.rpg-tier-badge.tier-5,
+.rpg-tier-badge.tier-6 {
+  background: rgba(168, 85, 247, 0.26);
+  border-color: rgba(192, 132, 252, 0.6);
+  color: #e9d5ff;
+}
+
+.rpg-tier-badge.tier-7,
+.rpg-tier-badge.tier-8 {
+  background: rgba(245, 158, 11, 0.28);
+  border-color: rgba(251, 191, 36, 0.65);
+  color: #fef08a;
+}
+
+.rpg-tier-badge.tier-9 {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.55), rgba(245, 158, 11, 0.55));
+  border-color: #fde047;
+  color: #fffbeb;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+}
+
+.rpg-item-card.rarity-uncommon {
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.rpg-item-card.rarity-rare {
+  border-color: rgba(56, 189, 248, 0.42);
+  background: linear-gradient(135deg, rgba(12, 74, 110, 0.28), rgba(19, 17, 38, 0.72));
 }
 
 .rpg-item-card.rarity-mythic {
@@ -1112,11 +1197,23 @@
   background: linear-gradient(135deg, rgba(59, 7, 100, 0.35), rgba(19, 17, 38, 0.7));
 }
 
+.rpg-item-card.is-locked {
+  opacity: 0.66;
+  filter: saturate(0.75);
+}
+
+.rpg-prereq-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.42rem;
+}
+
 .rpg-recipe-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  margin-top: 0.45rem;
+  margin-top: 0.38rem;
 }
 
 .rpg-mat-chip {
@@ -1138,6 +1235,12 @@
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.45);
   background: rgba(127, 29, 29, 0.35);
+}
+
+.rpg-mat-chip.lock {
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(120, 53, 15, 0.45);
 }
 
 .rpg-mat-qty-pill {

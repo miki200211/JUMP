@@ -19,14 +19,14 @@ import {
   getScaledMobStats,
   expForNextLevel,
   computePlayerStats
-} from './data.js?v=4.3.0';
+} from './data.js?v=4.4.0';
 import {
   createCharacterModel,
   createMobModelByType,
   createNameplateSprite
-} from './models.js?v=4.3.0';
-import { buildWorld } from './world.js?v=4.3.0';
-import { createVfxManager } from './vfx.js?v=4.3.0';
+} from './models.js?v=4.4.0';
+import { buildWorld } from './world.js?v=4.4.0';
+import { createVfxManager } from './vfx.js?v=4.4.0';
 import {
   enforceClientDataEpoch,
   loadSavedSession,
@@ -36,8 +36,8 @@ import {
   loginAccount,
   autoLoginFromSession,
   cloudSaveProgress
-} from './auth.js?v=4.3.0';
-import { createMultiplayerNetwork } from './network.js?v=4.3.0';
+} from './auth.js?v=4.4.0';
+import { createMultiplayerNetwork } from './network.js?v=4.4.0';
 
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
@@ -185,10 +185,14 @@ function initGame() {
     if (!rawState || typeof rawState !== 'object' || (rawState.dataEpoch || 1) < RPG_DATA_EPOCH) {
       return { state: clone(DEFAULT_PLAYER_STATE), wasReset: !!(rawState && Object.keys(rawState).length) };
     }
+    const ownedSet = new Set(Array.isArray(rawState.ownedItems) ? rawState.ownedItems : []);
+    ownedSet.add('wood_sword');
+    ownedSet.add('cloth_tunic');
     const merged = {
       ...clone(DEFAULT_PLAYER_STATE),
       ...rawState,
       dataEpoch: RPG_DATA_EPOCH,
+      ownedItems: Array.from(ownedSet),
       perks: sanitizePerks(rawState.perks),
       scrolls: [...(rawState.scrolls || [])],
       materials: { ...(rawState.materials || {}) }
@@ -1890,68 +1894,92 @@ function initGame() {
   const shopListEl = document.getElementById('rpg-shop-list');
   const shopGoldEl = document.getElementById('rpg-shop-gold');
   const shopTabs = document.querySelectorAll('.rpg-shop-tab');
-  let activeShopCat = 'weapon';
+  let activeShopCat = 'consumable';
 
   function renderShopList() {
     if (!shopListEl) return;
     if (shopGoldEl) shopGoldEl.textContent = `${state.gold} G`;
     shopListEl.textContent = '';
 
-    Object.values(SHOP_ITEMS)
-      .filter((it) => !it.craftOnly && it.category === activeShopCat && it.price > 0)
-      .forEach((item) => {
-        const owned = item.category !== 'consumable' && state.ownedItems.includes(item.id);
-        const card = document.createElement('div');
-        card.className = 'rpg-item-card';
+    const items = Object.values(SHOP_ITEMS)
+      .filter((it) => !it.craftOnly && it.category === activeShopCat && it.price > 0);
 
-        const statLine = item.category === 'weapon'
-          ? `攻擊 +${item.atk}${item.bonusMp ? ` · 魔力 +${item.bonusMp}` : ''}`
-          : item.category === 'armor'
-            ? `防禦 +${item.def} · 血量 +${item.bonusHp}`
-            : `持有：${state.potions[item.potionKey] || 0} 瓶`;
+    if (items.length === 0) {
+      const notice = document.createElement('div');
+      notice.className = 'rpg-shop-forge-redirect';
+      notice.innerHTML = `
+        <div class="rpg-item-name">⚒️ 武器與防具已改為魔物獵人「逐層衍生鍛造制」！</div>
+        <div class="rpg-item-desc">無法直接用金幣購買神兵——請前往村莊內的【⚒️ 矮人傳奇鐵匠】，從最底層 T0 新手木劍／旅人布衣開始收集素材，一層一層鍛造至 T9 終極神兵！</div>
+        <button type="button" class="rpg-primary-btn" id="rpg-shop-goto-forge">⚒️ 立即查看矮人鐵匠鍛造樹</button>
+      `;
+      const goBtn = notice.querySelector('#rpg-shop-goto-forge');
+      if (goBtn) {
+        goBtn.addEventListener('click', () => {
+          if (shopDialog && shopDialog.open) shopDialog.close();
+          activeForgeCat = activeShopCat === 'armor' ? 'armor' : 'weapon';
+          forgeTabs.forEach((b) => b.classList.toggle('active', b.dataset.cat === activeForgeCat));
+          openForgeDialog();
+        });
+      }
+      shopListEl.appendChild(notice);
+      return;
+    }
 
-        card.innerHTML = `
-          <div class="rpg-item-info">
-            <div class="rpg-item-name">${item.name}</div>
-            <div class="rpg-item-stat">${statLine}</div>
-            <div class="rpg-item-desc">${item.desc}</div>
-          </div>
-          <button type="button" class="rpg-buy-btn" ${owned ? 'disabled' : ''}>
-            ${owned ? '已擁有' : `${item.price} G 購買`}
-          </button>
-        `;
+    items.forEach((item) => {
+      const owned = item.category !== 'consumable' && state.ownedItems.includes(item.id);
+      const card = document.createElement('div');
+      card.className = 'rpg-item-card';
 
-        const btn = card.querySelector('.rpg-buy-btn');
-        if (btn && !owned) {
-          btn.addEventListener('click', () => {
-            if (state.gold < item.price) {
-              showToast('💰 金幣不足！快去野外狩獵魔物賺取賞金吧', 'warn');
-              return;
-            }
-            state.gold -= item.price;
-            if (item.category === 'consumable') {
-              state.potions[item.potionKey] = (state.potions[item.potionKey] || 0) + 1;
-              showToast(`購買成功：${item.name} x1`, 'success');
-            } else {
-              state.ownedItems.push(item.id);
-              if (item.category === 'weapon') state.weaponId = item.id;
-              if (item.category === 'armor') state.armorId = item.id;
-              rebuildPlayerMesh();
-              currentHp = Math.min(stats.maxHp, currentHp + (item.bonusHp || 0));
-              showToast(`⚔️ 購買並裝備了【${item.name}】！`, 'success');
-            }
-            updateHud();
-            renderShopList();
-            triggerAutoSave();
-          });
-        }
-        shopListEl.appendChild(card);
-      });
+      const statLine = item.category === 'weapon'
+        ? `攻擊 +${item.atk}${item.bonusMp ? ` · 魔力 +${item.bonusMp}` : ''}`
+        : item.category === 'armor'
+          ? `防禦 +${item.def} · 血量 +${item.bonusHp}`
+          : `持有：${state.potions[item.potionKey] || 0} 瓶`;
+
+      card.innerHTML = `
+        <div class="rpg-item-info">
+          <div class="rpg-item-name">${item.name}</div>
+          <div class="rpg-item-stat">${statLine}</div>
+          <div class="rpg-item-desc">${item.desc}</div>
+        </div>
+        <button type="button" class="rpg-buy-btn" ${owned ? 'disabled' : ''}>
+          ${owned ? '已擁有' : `${item.price} G 購買`}
+        </button>
+      `;
+
+      const btn = card.querySelector('.rpg-buy-btn');
+      if (btn && !owned) {
+        btn.addEventListener('click', () => {
+          if (state.gold < item.price) {
+            showToast('💰 金幣不足！快去野外狩獵魔物賺取賞金吧', 'warn');
+            return;
+          }
+          state.gold -= item.price;
+          if (item.category === 'consumable') {
+            const qty = item.grantCount || 1;
+            state.potions[item.potionKey] = (state.potions[item.potionKey] || 0) + qty;
+            showToast(`購買成功：${item.name}（+${qty} 瓶）`, 'success');
+          } else {
+            state.ownedItems.push(item.id);
+            if (item.category === 'weapon') state.weaponId = item.id;
+            if (item.category === 'armor') state.armorId = item.id;
+            rebuildPlayerMesh();
+            currentHp = Math.min(stats.maxHp, currentHp + (item.bonusHp || 0));
+            showToast(`⚔️ 購買並裝備了【${item.name}】！`, 'success');
+          }
+          updateHud();
+          renderShopList();
+          triggerAutoSave();
+        });
+      }
+      shopListEl.appendChild(card);
+    });
   }
 
   function openShopDialog() {
     if (!shopDialog) return;
     clearAllMovementKeys();
+    shopTabs.forEach((b) => b.classList.toggle('active', b.dataset.cat === activeShopCat));
     renderShopList();
     shopDialog.showModal();
   }
@@ -1968,7 +1996,7 @@ function initGame() {
   const shopCloseBtn = document.getElementById('rpg-shop-close');
   if (shopCloseBtn && shopDialog) shopCloseBtn.addEventListener('click', () => shopDialog.close());
 
-  // --- Dialog 3B: Dwarf Blacksmith Forge (Monster Hunter × Baldur's Gate Material Crafting!) ---
+  // --- Dialog 3B: Dwarf Blacksmith Forge (T0 → T9 Bottom-Up Monster Hunter Forging Tree!) ---
   const forgeListEl = document.getElementById('rpg-forge-list');
   const forgeGoldEl = document.getElementById('rpg-forge-gold');
   const forgeTabs = document.querySelectorAll('.rpg-forge-tab');
@@ -1979,63 +2007,104 @@ function initGame() {
     if (forgeGoldEl) forgeGoldEl.textContent = `${state.gold} G`;
     forgeListEl.textContent = '';
     if (!state.materials) state.materials = {};
+    if (!state.ownedItems.includes('wood_sword')) state.ownedItems.push('wood_sword');
+    if (!state.ownedItems.includes('cloth_tunic')) state.ownedItems.push('cloth_tunic');
 
-    Object.values(SHOP_ITEMS)
+    const catItems = Object.values(SHOP_ITEMS)
       .filter((it) => it.craftOnly && it.category === activeForgeCat)
-      .forEach((item) => {
-        const owned = state.ownedItems.includes(item.id);
-        const recipeEntries = Object.entries(item.recipe || {});
-        const hasMaterials = recipeEntries.every(([mId, req]) => (state.materials[mId] || 0) >= req);
-        const hasGold = state.gold >= (item.craftGold || 0);
-        const canCraft = !owned && hasMaterials && hasGold;
+      .sort((a, b) => (a.tier || 0) - (b.tier || 0));
 
-        const card = document.createElement('div');
-        card.className = `rpg-item-card${item.rarity ? ` rarity-${item.rarity}` : ''}`;
+    // Forge Tree Progress Header
+    const craftedCount = catItems.filter((it) => state.ownedItems.includes(it.id)).length;
+    const highestTier = catItems.reduce((mx, it) => (
+      state.ownedItems.includes(it.id) ? Math.max(mx, it.tier || 0) : mx
+    ), 0);
+    const progEl = document.createElement('div');
+    progEl.className = 'rpg-forge-progress';
+    progEl.innerHTML = `
+      <span>⚒️ ${activeForgeCat === 'weapon' ? '武器' : '防具'}鍛造樹進度：<strong>${craftedCount} / ${catItems.length}</strong></span>
+      <span>🏆 當前最高階：<strong>T${highestTier}</strong> / T9</span>
+    `;
+    forgeListEl.appendChild(progEl);
 
-        const statLine = item.category === 'weapon'
-          ? `攻擊 +${item.atk}${item.bonusMp ? ` · 魔力 +${item.bonusMp}` : ''}${item.lifestealBonus ? ` · 吸血 ${Math.round(item.lifestealBonus * 100)}%` : ''}${item.bossSlayer ? ` · 對Boss ${Math.round(item.bossSlayer * 100)}%` : ''}`
-          : `防禦 +${item.def} · 血量 +${item.bonusHp}${item.passiveRegen ? ` · 回血 +${item.passiveRegen}/s` : ''}${item.speedBonus ? ` · 移速 +${Math.round(item.speedBonus * 100)}%` : ''}`;
+    catItems.forEach((item) => {
+      const owned = state.ownedItems.includes(item.id);
+      const reqIds = item.requiresItems || [];
+      const hasPrereqs = reqIds.every((id) => state.ownedItems.includes(id));
+      const recipeEntries = Object.entries(item.recipe || {});
+      const hasMaterials = recipeEntries.every(([mId, req]) => (state.materials[mId] || 0) >= req);
+      const hasGold = state.gold >= (item.craftGold || 0);
+      const canCraft = !owned && hasPrereqs && hasMaterials && hasGold;
 
-        const chipsHtml = recipeEntries.map(([mId, req]) => {
-          const have = state.materials[mId] || 0;
-          const mDef = MATERIALS[mId];
-          const ok = have >= req;
-          return `<span class="rpg-mat-chip ${ok ? 'ok' : 'miss'}">${mDef ? mDef.name : mId} ${have}/${req}</span>`;
-        }).join('');
+      const card = document.createElement('div');
+      card.className = `rpg-item-card${item.rarity ? ` rarity-${item.rarity}` : ''}${(!owned && !hasPrereqs) ? ' is-locked' : ''}`;
 
-        card.innerHTML = `
-          <div class="rpg-item-info">
-            <div class="rpg-item-name">${item.name}</div>
-            <div class="rpg-item-stat">${statLine}</div>
-            <div class="rpg-item-desc">${item.desc}</div>
-            <div class="rpg-recipe-chips">${chipsHtml}<span class="rpg-mat-chip ${hasGold ? 'ok' : 'miss'}">💰 鍛造費 ${item.craftGold} G</span></div>
-          </div>
-          <button type="button" class="rpg-buy-btn" ${owned || !canCraft ? 'disabled' : ''}>
-            ${owned ? '已鍛造' : (canCraft ? '⚒️ 立即鍛造' : '素材不足')}
-          </button>
-        `;
+      const statLine = item.category === 'weapon'
+        ? `攻擊 +${item.atk}${item.bonusMp ? ` · 魔力 +${item.bonusMp}` : ''}${item.lifestealBonus ? ` · 吸血 ${Math.round(item.lifestealBonus * 100)}%` : ''}${item.bossSlayer ? ` · 對Boss ${Math.round(item.bossSlayer * 100)}%` : ''}`
+        : `防禦 +${item.def} · 血量 +${item.bonusHp}${item.passiveRegen ? ` · 回血 +${item.passiveRegen}/s` : ''}${item.speedBonus ? ` · 移速 +${Math.round(item.speedBonus * 100)}%` : ''}`;
 
-        const btn = card.querySelector('.rpg-buy-btn');
-        if (btn && canCraft) {
-          btn.addEventListener('click', () => {
-            state.gold -= (item.craftGold || 0);
-            recipeEntries.forEach(([mId, req]) => {
-              state.materials[mId] = Math.max(0, (state.materials[mId] || 0) - req);
-            });
-            state.ownedItems.push(item.id);
-            if (item.category === 'weapon') state.weaponId = item.id;
-            if (item.category === 'armor') state.armorId = item.id;
-            rebuildPlayerMesh();
-            currentHp = Math.min(stats.maxHp, currentHp + (item.bonusHp || 0));
-            vfx.spawnWaterWave(playerRoot.position, 6.5);
-            showToast(`⚒️ 傳奇鍛造成功！已裝備【${item.name}】！`, 'success');
-            updateHud();
-            renderForgeList();
-            triggerAutoSave();
+      const prereqHtml = reqIds.length > 0
+        ? `<div class="rpg-prereq-row">${reqIds.map((reqId) => {
+          const reqDef = SHOP_ITEMS[reqId];
+          const ok = state.ownedItems.includes(reqId);
+          return `<span class="rpg-mat-chip ${ok ? 'ok' : 'lock'}">${ok ? '✅' : '🔒'} 前置：${reqDef ? reqDef.name : reqId}</span>`;
+        }).join('')}</div>`
+        : '';
+
+      const chipsHtml = recipeEntries.map(([mId, req]) => {
+        const have = state.materials[mId] || 0;
+        const mDef = MATERIALS[mId];
+        const ok = have >= req;
+        return `<span class="rpg-mat-chip ${ok ? 'ok' : 'miss'}">${mDef ? mDef.name : mId} ${have}/${req}</span>`;
+      }).join('');
+
+      const btnLabel = owned
+        ? '✅ 已鍛造'
+        : !hasPrereqs
+          ? '🔒 需前置裝備'
+          : canCraft
+            ? `⚒️ 升階鍛造 (T${item.tier})`
+            : '素材／金幣不足';
+
+      card.innerHTML = `
+        <div class="rpg-item-info">
+          <div class="rpg-item-name"><span class="rpg-tier-badge tier-${item.tier || 1}">${item.tierLabel || `T${item.tier || 1}`}</span> ${item.name}</div>
+          <div class="rpg-item-stat">${statLine}</div>
+          <div class="rpg-item-desc">${item.desc}</div>
+          ${prereqHtml}
+          <div class="rpg-recipe-chips">${chipsHtml}<span class="rpg-mat-chip ${hasGold ? 'ok' : 'miss'}">💰 鍛造費 ${item.craftGold} G</span></div>
+        </div>
+        <button type="button" class="rpg-buy-btn" ${owned || !canCraft ? 'disabled' : ''}>
+          ${btnLabel}
+        </button>
+      `;
+
+      const btn = card.querySelector('.rpg-buy-btn');
+      if (btn && canCraft) {
+        btn.addEventListener('click', () => {
+          // Strict re-verification of prerequisite tier, gold, and materials
+          if (!reqIds.every((id) => state.ownedItems.includes(id))) {
+            showToast('🔒 請先從最底層鍛造前置裝備！', 'warn');
+            return;
+          }
+          state.gold -= (item.craftGold || 0);
+          recipeEntries.forEach(([mId, req]) => {
+            state.materials[mId] = Math.max(0, (state.materials[mId] || 0) - req);
           });
-        }
-        forgeListEl.appendChild(card);
-      });
+          state.ownedItems.push(item.id);
+          if (item.category === 'weapon') state.weaponId = item.id;
+          if (item.category === 'armor') state.armorId = item.id;
+          rebuildPlayerMesh();
+          currentHp = Math.min(stats.maxHp, currentHp + (item.bonusHp || 0));
+          vfx.spawnWaterWave(playerRoot.position, 6.5);
+          showToast(`⚒️【T${item.tier}】升階鍛造成功！已裝備【${item.name}】！`, 'success');
+          updateHud();
+          renderForgeList();
+          triggerAutoSave();
+        });
+      }
+      forgeListEl.appendChild(card);
+    });
   }
 
   function openForgeDialog() {

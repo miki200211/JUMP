@@ -2,7 +2,7 @@
  * RPG Account Authentication & Cloud Save Client (via Google Apps Script)
  * Supports SHA-256 hashed account login/register + local guest fallback.
  */
-import { DEFAULT_APPEARANCE, DEFAULT_PLAYER_STATE, RPG_DATA_EPOCH } from './data.js?v=4.3.0';
+import { DEFAULT_APPEARANCE, DEFAULT_PLAYER_STATE, RPG_DATA_EPOCH } from './data.js?v=4.4.0';
 
 const STORAGE_AUTH_KEY = 'jump_rpg_auth_v1';
 const STORAGE_LOCAL_SAVE_KEY = 'jump_rpg_local_save_v1';

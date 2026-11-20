@@ -144,6 +144,33 @@ export const SHOP_ITEMS = {
     glow: '#dc2626',
     desc: '【上古卷軸神器】以湮滅魔心鍛造的黑紅巨劍，攻擊附帶 12% 鮮血汲取！'
   },
+  poseidon_trident: {
+    id: 'poseidon_trident',
+    category: 'weapon',
+    name: '🔱 波賽頓海神三叉戟',
+    price: 1450,
+    atk: 106,
+    bonusMp: 60,
+    lifestealBonus: 0.08,
+    elementBonus: { type: 'water', mult: 1.65 },
+    style: 'staff',
+    color: '#06b6d4',
+    glow: '#22d3ee',
+    desc: '【古希臘神話神器】海神波賽頓統御滄海的三叉戟，水系傷害與治療 +65%、附帶 8% 吸血！'
+  },
+  zeus_bolt: {
+    id: 'zeus_bolt',
+    category: 'weapon',
+    name: '⚡ 宙斯雷霆神矛（Master Bolt）',
+    price: 1780,
+    atk: 124,
+    bonusMp: 80,
+    elementBonus: { type: 'lightning', mult: 1.8 },
+    style: 'greatsword',
+    color: '#fef08a',
+    glow: '#38bdf8',
+    desc: '【古希臘神話至高神器】眾神之王宙斯的雷霆神矛，雷系天罰傷害 +80%！'
+  },
 
   // === Armors ===
   cloth_tunic: {
@@ -185,6 +212,16 @@ export const SHOP_ITEMS = {
     bonusHp: 340,
     tint: '#dc2626',
     desc: '【上古卷軸傳說鎧】以古龍骸骨與逆鱗鍛造，血量 +340、防禦 +36，屍毒抗性大幅提升！'
+  },
+  aegis_armor: {
+    id: 'aegis_armor',
+    category: 'armor',
+    name: '🏛️ 雅典娜埃吉斯黃金神鎧（Aegis）',
+    price: 1480,
+    def: 50,
+    bonusHp: 480,
+    tint: '#facc15',
+    desc: '【古希臘神話神鎧】鑲嵌梅杜莎神盾徽記的奧林帕斯黃金神鎧，血量 +480、防禦 +50，大幅抵抗石化與屍毒！'
   },
 
   // === Consumables ===
@@ -399,6 +436,13 @@ export const ZONES = {
     radius: 28,
     safe: false
   },
+  greekPantheon: {
+    id: 'greekPantheon',
+    name: '🏛️ 克里特迷宮與古希臘神殿（米諾陶洛斯 / 梅杜莎 / 獨眼巨人 / 九頭蛇 Boss）',
+    center: { x: -54, z: -50 },
+    radius: 30,
+    safe: false
+  },
   dragonLair: {
     id: 'dragonLair',
     name: '🌋 火山世界吞噬者巢穴（煉獄古龍 Boss）',
@@ -525,6 +569,77 @@ export const MOB_TYPES = {
     respawnTime: 14,
     radius: 1.15
   },
+  minotaur: {
+    type: 'minotaur',
+    name: '🐂 米諾陶洛斯・迷宮牛頭人王',
+    level: 11,
+    maxHp: 1150,
+    atk: 66,
+    speed: 6.7,
+    aggroRange: 25,
+    attackRange: 3.5,
+    attackCooldown: 1.45,
+    stomp: true, // Heavy dual-axe labyrinth tremor & knockback
+    enrage: true,
+    isBoss: true,
+    expReward: 290,
+    goldReward: 245,
+    respawnTime: 16,
+    radius: 1.6
+  },
+  medusa: {
+    type: 'medusa',
+    name: '🐍 梅杜莎・蛇髮女妖戈爾貢',
+    level: 12,
+    maxHp: 1280,
+    atk: 62,
+    speed: 6.5,
+    aggroRange: 25,
+    attackRange: 8.2,
+    attackCooldown: 1.75,
+    petrify: true, // Petrifying Gaze: heavy slow + magic damage
+    isBoss: true,
+    expReward: 340,
+    goldReward: 290,
+    respawnTime: 18,
+    radius: 1.4
+  },
+  cyclops: {
+    type: 'cyclops',
+    name: '👁️ 波呂斐摩斯・獨眼巨人泰坦',
+    level: 13,
+    maxHp: 1750,
+    atk: 78,
+    speed: 5.4,
+    aggroRange: 26,
+    attackRange: 4.0,
+    attackCooldown: 2.0,
+    stomp: true, // Colossal marble pillar smash
+    isBoss: true,
+    expReward: 420,
+    goldReward: 360,
+    respawnTime: 20,
+    radius: 2.05
+  },
+  hydra: {
+    type: 'hydra',
+    name: '🐉 九頭蛇海德拉・深淵神話巨獸',
+    level: 15,
+    maxHp: 2500,
+    atk: 84,
+    speed: 6.0,
+    aggroRange: 28,
+    attackRange: 5.5,
+    attackCooldown: 1.85,
+    breathCooldown: 4.8,
+    regen: 24, // Immortal Hydra regen (cauterized by Fire!)
+    infect: true, // Venomous Hydra breath inflicts poison infection!
+    isBoss: true,
+    expReward: 640,
+    goldReward: 560,
+    respawnTime: 24,
+    radius: 2.9
+  },
   dragon: {
     type: 'dragon',
     name: '🔥 奧杜因・煉獄古龍',
@@ -582,7 +697,7 @@ export function computePlayerStats(state) {
     skillBonusMult: hasOblivion ? 1.3 : 1.0,
     shoutBonusMult: hasDragonborn ? 1.5 : 1.0,
     passiveHpRegen: hasSovngarde ? 8 : 0,
-    poisonResist: Math.min(0.75, hullRanks * 0.25 + (armor.id === 'dragon_armor' ? 0.35 : 0)),
+    poisonResist: Math.min(0.8, hullRanks * 0.25 + (armor.id === 'dragon_armor' ? 0.35 : 0) + (armor.id === 'aegis_armor' ? 0.5 : 0)),
     weapon,
     armor
   };

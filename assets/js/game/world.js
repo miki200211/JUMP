@@ -292,7 +292,81 @@ export function buildWorld(scene) {
     worldGroup.add(cap);
   }
 
-  // --- 5. Dragon Volcano Lair & Elder Scrolls Word Wall (North: 0, -72) ---
+  // --- 5. Ancient Greek Temple Ruins & Cretan Labyrinth (North-West: -54, -50) ---
+  const greekCenter = ZONES.greekPantheon.center;
+  const greekRadius = ZONES.greekPantheon.radius;
+
+  const marbleFloor = new THREE.Mesh(
+    new THREE.CircleGeometry(greekRadius, 40),
+    new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.72 })
+  );
+  marbleFloor.rotation.x = -Math.PI / 2;
+  marbleFloor.position.set(greekCenter.x, 0.05, greekCenter.z);
+  marbleFloor.receiveShadow = true;
+  worldGroup.add(marbleFloor);
+
+  const goldMosaicRing = new THREE.Mesh(
+    new THREE.RingGeometry(11.5, 13.2, 36),
+    new THREE.MeshBasicMaterial({ color: '#f59e0b', side: THREE.DoubleSide, transparent: true, opacity: 0.55 })
+  );
+  goldMosaicRing.rotation.x = -Math.PI / 2;
+  goldMosaicRing.position.set(greekCenter.x, 0.08, greekCenter.z);
+  worldGroup.add(goldMosaicRing);
+
+  const marbleColMat = new THREE.MeshStandardMaterial({ color: '#e2e8f0', roughness: 0.5, metalness: 0.1 });
+  const goldTrimMat = new THREE.MeshStandardMaterial({
+    color: '#fbbf24',
+    emissive: '#d97706',
+    emissiveIntensity: 0.45,
+    roughness: 0.3,
+    metalness: 0.8
+  });
+
+  // 10 Parthenon Marble Columns & Broken Lintels
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const cx = greekCenter.x + Math.cos(a) * 20;
+    const cz = greekCenter.z + Math.sin(a) * 20;
+    const colH = i % 3 === 0 ? 4.8 : 7.2;
+
+    const base = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.55, 2.1), marbleColMat);
+    base.position.set(cx, 0.28, cz);
+    worldGroup.add(base);
+
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.82, colH, 14), marbleColMat);
+    pillar.position.set(cx, 0.55 + colH / 2, cz);
+    pillar.castShadow = true;
+    worldGroup.add(pillar);
+
+    const capital = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.45, 1.95), goldTrimMat);
+    capital.position.set(cx, 0.55 + colH + 0.22, cz);
+    worldGroup.add(capital);
+  }
+
+  // Cretan Labyrinth Stone Walls
+  const labWallMat = new THREE.MeshStandardMaterial({ color: '#475569', roughness: 0.85 });
+  [
+    [greekCenter.x - 9, greekCenter.z + 7, 7.5, 2.6, 1.2],
+    [greekCenter.x + 9, greekCenter.z - 7, 7.5, 2.6, 1.2],
+    [greekCenter.x - 8, greekCenter.z - 8, 1.2, 2.6, 7.5],
+    [greekCenter.x + 8, greekCenter.z + 8, 1.2, 2.6, 7.5]
+  ].forEach(([wx, wz, w, h, d]) => {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), labWallMat);
+    wall.position.set(wx, h / 2, wz);
+    wall.castShadow = true;
+    worldGroup.add(wall);
+  });
+
+  // Central Olympus Golden Altar
+  const olympusAltar = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, 1.1, 12), marbleColMat);
+  olympusAltar.position.set(greekCenter.x, 0.55, greekCenter.z);
+  worldGroup.add(olympusAltar);
+
+  const olympusLight = new THREE.PointLight('#fbbf24', 2.8, 38);
+  olympusLight.position.set(greekCenter.x, 7, greekCenter.z);
+  worldGroup.add(olympusLight);
+
+  // --- 6. Dragon Volcano Lair & Elder Scrolls Word Wall (North: 0, -72) ---
   const lairCenter = ZONES.dragonLair.center;
   const lairRadius = ZONES.dragonLair.radius;
   const lavaGround = new THREE.Mesh(

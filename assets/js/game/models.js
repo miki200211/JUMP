@@ -972,6 +972,308 @@ export function createTreasureChestModel() {
 }
 
 /**
+ * Ancient Greek Mythology Boss 1: Minotaur of the Cretan Labyrinth (Lv.11)
+ */
+export function createMinotaurModel() {
+  const g = new THREE.Group();
+  const furMat = mat('#5c2d16', 0.78);
+  const darkFurMat = mat('#3b1a0b', 0.85);
+  const bronzeMat = mat('#d97706', 0.35, 0.75, '#b45309', 0.25);
+  const hornMat = mat('#fef3c7', 0.3, 0.15);
+  const eyeMat = mat('#ef4444', 0.1, 0, '#ef4444', 1.6);
+
+  // Massive muscular bull-man torso
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.58, 1.55, 16), furMat);
+  torso.position.y = 1.65;
+  torso.castShadow = true;
+  g.add(torso);
+
+  // Bronze Greek Labyrinth belt & pteruges skirt
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.72, 0.45, 16), bronzeMat);
+  belt.position.y = 0.95;
+  g.add(belt);
+
+  // Hooved legs
+  [-0.34, 0.34].forEach((lx) => {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.65, 8, 12), darkFurMat);
+    leg.position.set(lx, 0.48, 0);
+    g.add(leg);
+  });
+
+  // Bull Head & Snout
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 14), darkFurMat);
+  head.position.set(0, 2.68, 0.18);
+  head.castShadow = true;
+  g.add(head);
+
+  const snout = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.42, 0.65), furMat);
+  snout.position.set(0, 2.55, 0.55);
+  g.add(snout);
+
+  // Golden Bull Nose Ring
+  const noseRing = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.04, 10, 20), bronzeMat);
+  noseRing.position.set(0, 2.42, 0.88);
+  noseRing.rotation.x = 0.3;
+  g.add(noseRing);
+
+  // Giant Curved Minotaur Horns
+  [-1, 1].forEach((dir) => {
+    const hornBase = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.05, 12), hornMat);
+    hornBase.position.set(dir * 0.65, 2.95, 0.22);
+    hornBase.rotation.z = -dir * 0.85;
+    hornBase.rotation.x = 0.35;
+    g.add(hornBase);
+  });
+
+  [-0.18, 0.18].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), eyeMat);
+    eye.position.set(ex, 2.75, 0.62);
+    g.add(eye);
+  });
+
+  // Double-Bladed Cretan Labyrinth Battleaxe (Labrys)
+  const arm = new THREE.Group();
+  arm.position.set(0.95, 2.05, 0.15);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.4, 10), mat('#78350f', 0.7));
+  shaft.rotation.x = Math.PI / 2.2;
+  shaft.position.set(0, -0.1, 0.85);
+  arm.add(shaft);
+
+  const bladeL = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.75, 0.1), bronzeMat);
+  bladeL.position.set(0, 0.15, 1.65);
+  arm.add(bladeL);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('🐂 米諾陶洛斯・迷宮牛頭人王 [Boss Lv.11]', '#fb923c', true);
+  hpBar.sprite.scale.set(4.3, 1.15, 1);
+  hpBar.sprite.position.set(0, 3.85, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9 : 2.8);
+    torso.position.y = 1.65 + (moving ? Math.abs(Math.sin(clk)) * 0.18 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.4) * 1.55 : Math.sin(clk) * 0.35;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ancient Greek Mythology Boss 2: Medusa the Gorgon Queen (Lv.12)
+ */
+export function createMedusaModel() {
+  const g = new THREE.Group();
+  const scaleMat = mat('#059669', 0.4, 0.35, '#047857', 0.3);
+  const skinMat = mat('#6ee7b7', 0.45);
+  const goldMat = mat('#fbbf24', 0.25, 0.85, '#d97706', 0.4);
+  const eyeMat = mat('#a3e635', 0.1, 0, '#84cc16', 1.8);
+
+  // Coiled Serpentine Tail Base + Segments
+  const tailGroup = new THREE.Group();
+  const coil1 = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.24, 12, 24), scaleMat);
+  coil1.rotation.x = Math.PI / 2;
+  coil1.position.y = 0.24;
+  tailGroup.add(coil1);
+
+  const coil2 = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.2, 12, 24), scaleMat);
+  coil2.rotation.x = Math.PI / 2;
+  coil2.position.y = 0.56;
+  tailGroup.add(coil2);
+  g.add(tailGroup);
+
+  // Upper Gorgon Torso with Golden Greek Breastplate
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 1.15, 16), skinMat);
+  torso.position.y = 1.35;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const armor = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.44, 0.65, 16), goldMat);
+  armor.position.y = 1.42;
+  g.add(armor);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 14), skinMat);
+  head.position.set(0, 2.22, 0.05);
+  g.add(head);
+
+  // Crown of Writhing Vipers (Snake Hair)
+  const snakesGroup = new THREE.Group();
+  snakesGroup.position.set(0, 2.42, 0);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const snake = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.65, 8), scaleMat);
+    snake.position.set(Math.cos(a) * 0.28, 0.15, Math.sin(a) * 0.28);
+    snake.rotation.z = -Math.cos(a) * 0.65;
+    snake.rotation.x = Math.sin(a) * 0.65;
+    snakesGroup.add(snake);
+  }
+  g.add(snakesGroup);
+
+  // Glowing Petrifying Eyes
+  [-0.13, 0.13].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), eyeMat);
+    eye.position.set(ex, 2.26, 0.39);
+    g.add(eye);
+  });
+
+  // Golden Gorgon Bow / Serpent Staff
+  const arm = new THREE.Group();
+  arm.position.set(0.55, 1.65, 0.15);
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.055, 10, 20, Math.PI), goldMat);
+  bow.rotation.y = Math.PI / 2;
+  bow.position.set(0, 0, 0.45);
+  arm.add(bow);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('🐍 梅杜莎・蛇髮女妖 [石化凝視 Boss Lv.12]', '#34d399', true);
+  hpBar.sprite.scale.set(4.4, 1.15, 1);
+  hpBar.sprite.position.set(0, 3.35, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9.5 : 3.2);
+    tailGroup.rotation.y = Math.sin(clk) * 0.25;
+    snakesGroup.rotation.y = Math.sin(clk * 1.5) * 0.35;
+    arm.rotation.x = attacking ? -Math.sin(clk * 2) * 0.9 : Math.sin(clk) * 0.2;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ancient Greek Mythology Boss 3: Polyphemus the Cyclops Titan (Lv.13)
+ */
+export function createCyclopsModel() {
+  const g = new THREE.Group();
+  const skinMat = mat('#b45309', 0.72);
+  const bronzeMat = mat('#92400e', 0.4, 0.65);
+  const marbleMat = mat('#e2e8f0', 0.55, 0.1);
+  const eyeMat = mat('#ef4444', 0.1, 0, '#f97316', 1.8);
+
+  // Colossal Titan Body
+  const torso = new THREE.Mesh(new THREE.SphereGeometry(1.15, 18, 16), skinMat);
+  torso.scale.set(1.05, 1.25, 0.95);
+  torso.position.y = 1.75;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.08, 0.48, 16), bronzeMat);
+  belt.position.y = 1.05;
+  g.add(belt);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 14), skinMat);
+  head.position.set(0, 3.25, 0.2);
+  head.castShadow = true;
+  g.add(head);
+
+  // Single Giant Glowing Cyclops Eye in Center of Forehead
+  const bigEyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 12), mat('#fef2f2', 0.2));
+  bigEyeWhite.position.set(0, 3.32, 0.72);
+  g.add(bigEyeWhite);
+
+  const bigPupil = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), eyeMat);
+  bigPupil.position.set(0, 3.32, 0.88);
+  g.add(bigPupil);
+
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.68, 10), mat('#fef3c7', 0.35));
+  horn.position.set(0, 3.92, 0.3);
+  horn.rotation.x = 0.28;
+  g.add(horn);
+
+  // Broken Greek Marble Temple Column used as a Giant Club!
+  const arm = new THREE.Group();
+  arm.position.set(1.25, 2.35, 0.2);
+  const columnClub = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.28, 2.75, 12), marbleMat);
+  columnClub.rotation.x = Math.PI / 2.2;
+  columnClub.position.set(0, -0.2, 0.95);
+  arm.add(columnClub);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('👁️ 波呂斐摩斯・獨眼巨人泰坦 [Boss Lv.13]', '#facc15', true);
+  hpBar.sprite.scale.set(4.5, 1.2, 1);
+  hpBar.sprite.position.set(0, 4.55, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 7 : 2);
+    torso.position.y = 1.75 + (moving ? Math.abs(Math.sin(clk)) * 0.22 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.2) * 1.65 : Math.sin(clk) * 0.28;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ancient Greek Mythology Boss 4: Lernaean Hydra (Multi-Headed Mythic Beast Lv.15)
+ */
+export function createHydraModel() {
+  const g = new THREE.Group();
+  const bodyMat = mat('#064e3b', 0.5, 0.25, '#022c22', 0.35);
+  const bellyMat = mat('#10b981', 0.55);
+  const eyeMat = mat('#bef264', 0.1, 0, '#84cc16', 1.8);
+
+  // Massive Serpentine Dragon Body
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.55, 18, 16), bodyMat);
+  body.scale.set(1.1, 0.9, 1.55);
+  body.position.y = 1.45;
+  body.castShadow = true;
+  g.add(body);
+
+  // 3 Distinct Long Snapping Hydra Necks & Heads
+  const heads = [];
+  [-0.95, 0, 0.95].forEach((offsetX, idx) => {
+    const neckGroup = new THREE.Group();
+    neckGroup.position.set(offsetX, 2.05, 1.15);
+
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.38, 1.85, 12), bodyMat);
+    neck.position.set(0, 0.75, 0.45);
+    neck.rotation.x = 0.45;
+    neckGroup.add(neck);
+
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.15, 10), bellyMat);
+    head.rotation.x = Math.PI / 2;
+    head.position.set(0, 1.55, 1.05);
+    neckGroup.add(head);
+
+    [-0.16, 0.16].forEach((ex) => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
+      eye.position.set(ex, 1.68, 1.15);
+      neckGroup.add(eye);
+    });
+
+    g.add(neckGroup);
+    heads.push({ neckGroup, phase: idx * 2.1 });
+  });
+
+  // Lashing Hydra Tail
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.55, 2.8, 12), bodyMat);
+  tail.rotation.x = -Math.PI / 2.3;
+  tail.position.set(0, 1.05, -2.6);
+  g.add(tail);
+
+  const hpBar = createNameplateSprite('🐉 九頭蛇海德拉・深淵神話巨獸 [再生劇毒 Boss Lv.15]', '#a3e635', true);
+  hpBar.sprite.scale.set(4.8, 1.25, 1);
+  hpBar.sprite.position.set(0, 4.75, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 7.5 : 3);
+    heads.forEach((h) => {
+      h.neckGroup.rotation.y = Math.sin(clk + h.phase) * 0.28;
+      h.neckGroup.rotation.x = attacking
+        ? Math.sin((clk + h.phase) * 2.4) * 0.55
+        : Math.sin(clk + h.phase) * 0.15;
+    });
+    tail.rotation.z = Math.sin(clk) * 0.3;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
  * Factory helper to create any mob model by its type key.
  */
 export function createMobModelByType(typeKey) {
@@ -982,5 +1284,9 @@ export function createMobModelByType(typeKey) {
   if (typeKey === 'gnome') return createGnomeModel();
   if (typeKey === 'zombie') return createZombieModel();
   if (typeKey === 'vampire') return createVampireModel();
+  if (typeKey === 'minotaur') return createMinotaurModel();
+  if (typeKey === 'medusa') return createMedusaModel();
+  if (typeKey === 'cyclops') return createCyclopsModel();
+  if (typeKey === 'hydra') return createHydraModel();
   return createDragonModel();
 }

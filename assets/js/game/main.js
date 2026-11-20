@@ -462,7 +462,13 @@ function initGame() {
   [[-40, 10], [-48, 22], [-38, 24]].forEach(([x, z]) => spawnMob('gnome', x, z));
   [[-54, 10], [-58, 18]].forEach(([x, z]) => spawnMob('vampire', x, z));
 
-  // 4. Dragon Volcano Lair (1 Alduin Elder Dragon Boss)
+  // 4. Ancient Greek Temple Ruins & Cretan Labyrinth (Minotaur, Medusa, Cyclops, Lernaean Hydra Bosses!)
+  spawnMob('minotaur', -44, -41);
+  spawnMob('medusa', -63, -43);
+  spawnMob('cyclops', -47, -58);
+  spawnMob('hydra', -61, -59);
+
+  // 5. Dragon Volcano Lair (1 Alduin Elder Dragon Boss)
   spawnMob('dragon', 0, -68);
 
   function isInSafeZone(pos) {
@@ -759,14 +765,19 @@ function initGame() {
     currentHp = Math.max(0, currentHp - dmg);
     spawnFloatingText(playerRoot.position, `-${dmg}`, opts && opts.infect ? '#84cc16' : '#f87171', false);
 
-    // Zombie Plague Infection mechanic
+    // Zombie Plague Infection / Hydra Venom / Medusa Petrify mechanic
     if (opts && opts.infect && currentHp > 0) {
       const wasInfected = infectionTimer > 0;
       infectionTimer = 6.5;
       infectionTick = 1.0;
       vfx.spawnPoisonCloud(playerRoot.position);
       if (!wasInfected) {
-        showToast('☣️ 你被殭屍抓傷，感染了【屍毒】！（持續扣血並減速 30%，可用R水之治癒或紅水淨化）', 'danger');
+        showToast(
+          opts.petrify
+            ? '🗿 你受到梅杜莎的【石化凝視】與蛇毒詛咒！（大幅減速並持續扣血，可用R水之治癒或紅水淨化）'
+            : '☣️ 你感染了【屍毒 / 九頭蛇劇毒】！（持續扣血並減速 30%，可用R水之治癒或紅水淨化）',
+          'danger'
+        );
       }
     }
 
@@ -1208,6 +1219,7 @@ function initGame() {
       greenskinWarfront: 'rgba(180, 83, 9, 0.35)',
       zombieCavern: 'rgba(132, 204, 22, 0.36)',
       gnomeForest: 'rgba(147, 51, 234, 0.35)',
+      greekPantheon: 'rgba(250, 204, 21, 0.38)',
       dragonLair: 'rgba(239, 68, 68, 0.4)'
     };
     Object.values(ZONES).forEach((z) => {
@@ -2280,8 +2292,8 @@ function initGame() {
       let moving = false;
       let attacking = false;
 
-      // Orc Berserker Enrage below 50% HP
-      const isOrcEnraged = mob.type === 'orc' && mob.hp < mob.def.maxHp * 0.5;
+      // Orc Berserker & Minotaur Enrage below 50% HP
+      const isOrcEnraged = (mob.type === 'orc' || mob.type === 'minotaur') && mob.hp < mob.def.maxHp * 0.5;
 
       if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 36) {
         // Face player
@@ -2289,15 +2301,19 @@ function initGame() {
         toPlayer.y = 0;
         mob.visual.group.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
 
-        // Dragon special breath telegraph
-        if (mob.def.isBoss) {
+        // Dragon & Hydra special breath telegraph
+        if (mob.def.breathCooldown) {
           mob.breathTimer -= dt;
           if (mob.breathTimer <= 0 && distToPlayer <= 18) {
             mob.breathTimer = mob.def.breathCooldown;
             const targetSpot = playerRoot.position.clone();
             vfx.spawnDragonBreathWarning(targetSpot, 6.8, 1.25, (blastPos) => {
               if (!isDead && playerRoot.position.distanceTo(blastPos) <= 6.8) {
-                takePlayerDamage(mob.def.atk * 1.75, mob.def.name);
+                takePlayerDamage(
+                  mob.def.atk * 1.75,
+                  mob.def.name,
+                  mob.def.infect ? { infect: true } : null
+                );
               }
             });
           }
@@ -2326,7 +2342,13 @@ function initGame() {
                   takePlayerDamage(rawAtk, mob.def.name);
                 }
               });
-            } else if (mob.type === 'zombie') {
+            } else if (mob.type === 'medusa') {
+              // Medusa Petrifying Gaze shockwave
+              const gazeDir = toPlayer.clone().normalize();
+              vfx.spawnDragonShout(pos, gazeDir, 8.5);
+              vfx.spawnPoisonCloud(playerRoot.position);
+              takePlayerDamage(rawAtk, mob.def.name, { infect: true, petrify: true });
+            } else if (mob.type === 'zombie' || mob.type === 'hydra') {
               takePlayerDamage(rawAtk, mob.def.name, { infect: true });
             } else if (mob.type === 'vampire') {
               takePlayerDamage(rawAtk, mob.def.name);
@@ -2334,10 +2356,13 @@ function initGame() {
               mob.hp = Math.min(mob.def.maxHp, mob.hp + drainHeal);
               mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
               spawnFloatingText(pos, `🦇 +${drainHeal}`, '#f43f5e', false);
-            } else if (mob.type === 'ogre') {
-              takePlayerDamage(rawAtk, mob.def.name);
+            } else if (mob.type === 'ogre' || mob.type === 'minotaur' || mob.type === 'cyclops') {
               const kbDir = toPlayer.clone().normalize();
-              playerRoot.position.addScaledVector(kbDir, 2.4);
+              if (mob.type === 'minotaur' || mob.type === 'cyclops') {
+                vfx.spawnEarthSpikes(pos, kbDir, 5.2);
+              }
+              takePlayerDamage(rawAtk, mob.def.name);
+              playerRoot.position.addScaledVector(kbDir, mob.type === 'cyclops' ? 3.2 : 2.5);
             } else {
               takePlayerDamage(rawAtk, mob.def.name);
             }

@@ -9,6 +9,8 @@ import {
   DEFAULT_PLAYER_STATE,
   SHOP_ITEMS,
   SKILLS,
+  ROGUELIKE_PERKS,
+  ELDER_SCROLLS,
   ZONES,
   MOB_TYPES,
   expForNextLevel,
@@ -16,9 +18,7 @@ import {
 } from './data.js';
 import {
   createCharacterModel,
-  createGoblinModel,
-  createGnomeModel,
-  createDragonModel,
+  createMobModelByType,
   createNameplateSprite
 } from './models.js';
 import { buildWorld } from './world.js';
@@ -132,6 +132,9 @@ function initGame() {
   const hudInviteAccept = document.getElementById('rpg-invite-accept');
   const hudInviteDecline = document.getElementById('rpg-invite-decline');
   const hudShopPrompt = document.getElementById('rpg-shop-prompt');
+  const hudChestPrompt = document.getElementById('rpg-chest-prompt');
+  const hudInfectionBadge = document.getElementById('rpg-infection-badge');
+  const hudPerksStrip = document.getElementById('rpg-perks-strip');
   const hudToast = document.getElementById('rpg-toast');
   const damageLayer = document.getElementById('rpg-damage-layer');
   const minimapCanvas = document.getElementById('rpg-minimap');
@@ -143,6 +146,8 @@ function initGame() {
   const shopDialog = document.getElementById('rpg-shop-dialog');
   const bagDialog = document.getElementById('rpg-bag-dialog');
   const partyDialog = document.getElementById('rpg-party-dialog');
+  const perkDialog = document.getElementById('rpg-perk-dialog');
+  const perkChoicesEl = document.getElementById('rpg-perk-choices');
 
   // --- Player Runtime State ---
   let accountUser = null; // null = guest
@@ -161,6 +166,8 @@ function initGame() {
     if (localSave.appearance) appearance = { ...clone(DEFAULT_APPEARANCE), ...localSave.appearance };
     if (localSave.state) state = { ...clone(DEFAULT_PLAYER_STATE), ...localSave.state };
   }
+  state.perks = state.perks || {};
+  state.scrolls = state.scrolls || [];
 
   let stats = computePlayerStats(state);
   let currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
@@ -168,6 +175,17 @@ function initGame() {
   let isDead = false;
   let respawnTimer = 0;
   let earthShieldTimer = 0;
+  let infectionTimer = 0; // Zombie Plague Infection (DoT + 30% slow)
+  let infectionTick = 0;
+  let chestCooldown = 0;
+  let pendingPerkPicks = 0;
+
+  // Roguelike Auto-Weapons (Vampire Survivors style)
+  let garlicTick = 0;
+  let autoThunderTick = 0;
+  let frostNovaTick = 0;
+  let orbitAngle = 0;
+  const orbitHitCooldowns = new Map(); // mobId -> remainingSec
 
   // Cooldowns
   const cooldowns = {
@@ -176,7 +194,8 @@ function initGame() {
     lightning: 0,
     fire: 0,
     water: 0,
-    earth: 0
+    earth: 0,
+    shout: 0
   };
   let attackAnim = 0;
   let dodgeAnim = 0;
@@ -202,6 +221,56 @@ function initGame() {
   let playerModel = null;
   let playerNameplate = null;
 
+  // Roguelike 3D Visual Attachments (Vampire Survivors style Orbiting Blades & Garlic Aura)
+  const orbitBladesGroup = new THREE.Group();
+  orbitBladesGroup.position.y = 1.05;
+  playerRoot.add(orbitBladesGroup);
+
+  const garlicAuraMesh = new THREE.Mesh(
+    new THREE.RingGeometry(3.4, 3.8, 36),
+    new THREE.MeshBasicMaterial({ color: '#f97316', side: THREE.DoubleSide, transparent: true, opacity: 0.36 })
+  );
+  garlicAuraMesh.rotation.x = -Math.PI / 2;
+  garlicAuraMesh.position.y = 0.08;
+  garlicAuraMesh.visible = false;
+  playerRoot.add(garlicAuraMesh);
+
+  function rebuildPerkVisuals() {
+    while (orbitBladesGroup.children.length > 0) {
+      orbitBladesGroup.remove(orbitBladesGroup.children[0]);
+    }
+    const bladeRanks = (state.perks && state.perks.orbit_blades) || 0;
+    if (bladeRanks > 0) {
+      const bladeCount = Math.min(6, bladeRanks + 1);
+      const bladeMat = new THREE.MeshStandardMaterial({
+        color: '#fef08a',
+        emissive: '#f59e0b',
+        emissiveIntensity: 0.75,
+        metalness: 0.85,
+        roughness: 0.2
+      });
+      const hiltMat = new THREE.MeshStandardMaterial({ color: '#78350f', roughness: 0.6 });
+      for (let i = 0; i < bladeCount; i++) {
+        const angle = (i / bladeCount) * Math.PI * 2;
+        const holder = new THREE.Group();
+        holder.position.set(Math.cos(angle) * 2.55, 0, Math.sin(angle) * 2.55);
+        holder.rotation.y = -angle + Math.PI / 2;
+
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 1.05), bladeMat);
+        blade.position.z = 0.3;
+        holder.add(blade);
+
+        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.08, 0.1), hiltMat);
+        guard.position.z = -0.22;
+        holder.add(guard);
+
+        orbitBladesGroup.add(holder);
+      }
+    }
+    const garlicRanks = (state.perks && state.perks.garlic_aura) || 0;
+    garlicAuraMesh.visible = garlicRanks > 0;
+  }
+
   function rebuildPlayerMesh() {
     if (playerModel) playerRoot.remove(playerModel.group);
     if (playerNameplate) playerRoot.remove(playerNameplate.sprite);
@@ -214,6 +283,7 @@ function initGame() {
     playerNameplate = createNameplateSprite(tag, '#a5f3fc', false);
     playerNameplate.sprite.position.set(0, 2.75 * (appearance.heightScale || 1), 0);
     playerRoot.add(playerNameplate.sprite);
+    rebuildPerkVisuals();
   }
   rebuildPlayerMesh();
 
@@ -268,7 +338,8 @@ function initGame() {
         (customizerDialog && customizerDialog.open) ||
         (shopDialog && shopDialog.open) ||
         (bagDialog && bagDialog.open) ||
-        (partyDialog && partyDialog.open)) {
+        (partyDialog && partyDialog.open) ||
+        (perkDialog && perkDialog.open)) {
       return true;
     }
     return false;
@@ -290,12 +361,15 @@ function initGame() {
       castSkill('water');
     } else if (k === 'f') {
       castSkill('earth');
+    } else if (k === 't') {
+      castSkill('shout');
     } else if (k === '1') {
       usePotion('hp');
     } else if (k === '2') {
       usePotion('mp');
     } else if (k === 'g') {
       if (isNearMerchant()) openShopDialog();
+      else if (isNearChest()) openCaveTreasureChest();
     }
   });
 
@@ -351,11 +425,7 @@ function initGame() {
 
   function spawnMob(typeKey, homeX, homeZ) {
     const def = MOB_TYPES[typeKey];
-    const visual = typeKey === 'goblin'
-      ? createGoblinModel()
-      : typeKey === 'gnome'
-        ? createGnomeModel()
-        : createDragonModel();
+    const visual = createMobModelByType(typeKey);
 
     visual.group.position.set(homeX, 0, homeZ);
     scene.add(visual.group);
@@ -379,12 +449,21 @@ function initGame() {
     });
   }
 
-  // Goblin Camp (5 goblins)
-  [[38, 16], [48, 14], [54, 24], [44, 30], [36, 28]].forEach(([x, z]) => spawnMob('goblin', x, z));
-  // Gnome Forest (4 gnomes)
-  [[-40, 10], [-52, 8], [-55, 22], [-43, 24]].forEach(([x, z]) => spawnMob('gnome', x, z));
-  // Dragon Volcano Lair (1 Elder Dragon Boss)
-  spawnMob('dragon', 0, -64);
+  // 1. Greenskin Warfront (Goblin Skirmishers, Orc Berserkers, Ogre Crushers, Forest Trolls)
+  [[38, 16], [46, 14], [36, 26], [44, 32]].forEach(([x, z]) => spawnMob('goblin', x, z));
+  [[52, 20], [58, 28], [48, 36]].forEach(([x, z]) => spawnMob('orc', x, z));
+  [[62, 22], [56, 38]].forEach(([x, z]) => spawnMob('ogre', x, z));
+  [[66, 30], [42, 42]].forEach(([x, z]) => spawnMob('troll', x, z));
+
+  // 2. Zombie Plague Cavern (6 Plague Zombies guarding the cave entrance & Ancient Treasure Chest)
+  [[44, -36], [50, -40], [58, -42], [48, -48], [55, -52], [60, -47]].forEach(([x, z]) => spawnMob('zombie', x, z));
+
+  // 3. Gnome & Vampire Blood Forest (3 Gnome Bombers + 2 Vampire Lords around the Blood Moon Altar)
+  [[-40, 10], [-48, 22], [-38, 24]].forEach(([x, z]) => spawnMob('gnome', x, z));
+  [[-54, 10], [-58, 18]].forEach(([x, z]) => spawnMob('vampire', x, z));
+
+  // 4. Dragon Volcano Lair (1 Alduin Elder Dragon Boss)
+  spawnMob('dragon', 0, -68);
 
   function isInSafeZone(pos) {
     const dx = pos.x - ZONES.village.center.x;
@@ -394,6 +473,10 @@ function initGame() {
 
   function isNearMerchant() {
     return playerRoot.position.distanceTo(world.merchantPos) <= 5.2;
+  }
+
+  function isNearChest() {
+    return world.chestPos && playerRoot.position.distanceTo(world.chestPos) <= 5.2;
   }
 
   // --- Combat & Multiplayer PvP / Party Logic ---
@@ -430,14 +513,134 @@ function initGame() {
     return d.normalize();
   }
 
+  // --- Roguelike 3-Choice Boon Modal & Zombie Cavern Treasure Chest ---
+  if (perkDialog) {
+    perkDialog.addEventListener('cancel', (e) => e.preventDefault());
+  }
+
+  function renderPerksStrip() {
+    if (!hudPerksStrip) return;
+    hudPerksStrip.textContent = '';
+    const perksObj = state.perks || {};
+    ROGUELIKE_PERKS.forEach((p) => {
+      const rank = perksObj[p.id] || 0;
+      if (rank <= 0) return;
+      const chip = document.createElement('span');
+      chip.className = 'rpg-perk-chip';
+      chip.title = `${p.name} (Lv.${rank})：${p.desc}`;
+      chip.textContent = `${p.icon} ${p.name.replace(/^[^\s]+\s*/, '')} Lv.${rank}`;
+      hudPerksStrip.appendChild(chip);
+    });
+    const scrolls = state.scrolls || [];
+    scrolls.forEach((sId) => {
+      const sDef = ELDER_SCROLLS.find((x) => x.id === sId || x.name === sId);
+      const sChip = document.createElement('span');
+      sChip.className = 'rpg-perk-chip';
+      sChip.title = sDef ? `${sDef.name}：${sDef.bonusDesc}` : String(sId);
+      sChip.textContent = sDef ? sDef.name : `📜 ${sId}`;
+      hudPerksStrip.appendChild(sChip);
+    });
+  }
+
+  function openNextPerkDialog() {
+    if (!perkDialog || !perkChoicesEl) return;
+    if (perkDialog.open || pendingPerkPicks <= 0) return;
+
+    if (!state.perks) state.perks = {};
+    // Pick 3 random distinct perks from ROGUELIKE_PERKS
+    const pool = [...ROGUELIKE_PERKS];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = pool[i];
+      pool[i] = pool[j];
+      pool[j] = tmp;
+    }
+    const choices = pool.slice(0, 3);
+    perkChoicesEl.textContent = '';
+
+    choices.forEach((perk) => {
+      const curRank = state.perks[perk.id] || 0;
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'rpg-perk-card';
+      card.innerHTML = `
+        <div class="rpg-perk-icon">${perk.icon}</div>
+        <div class="rpg-perk-title">${perk.name}</div>
+        <div class="rpg-perk-rank">目前等級 Lv.${curRank} → Lv.${curRank + 1}</div>
+        <div class="rpg-perk-desc">${perk.desc}</div>
+      `;
+      card.addEventListener('click', () => {
+        state.perks[perk.id] = (state.perks[perk.id] || 0) + 1;
+        pendingPerkPicks = Math.max(0, pendingPerkPicks - 1);
+        stats = computePlayerStats(state);
+        currentHp = Math.min(stats.maxHp, currentHp + 35);
+        currentMp = Math.min(stats.maxMp, currentMp + 25);
+        rebuildPerkVisuals();
+        renderPerksStrip();
+        updateHud();
+        triggerAutoSave();
+        perkDialog.close();
+        showToast(`✨ 獲得肉鴿祝福：【${perk.name}】Lv.${state.perks[perk.id]}！`, 'success');
+        if (pendingPerkPicks > 0) {
+          setTimeout(openNextPerkDialog, 180);
+        }
+      });
+      perkChoicesEl.appendChild(card);
+    });
+
+    perkDialog.showModal();
+  }
+
+  function openCaveTreasureChest() {
+    if (isDead) return;
+    if (!isNearChest()) return;
+    if (chestCooldown > 0) {
+      showToast(`📦 上古秘寶箱封印重聚中（剩餘 ${Math.ceil(chestCooldown)} 秒）`, 'warn');
+      return;
+    }
+    chestCooldown = 38;
+    if (!state.scrolls) state.scrolls = [];
+
+    const bonusGold = Math.round((240 + Math.random() * 160) * (stats.goldExpMult || 1));
+    state.gold += bonusGold;
+
+    // Grant an uncollected Elder Scroll if available
+    const remainingScrolls = ELDER_SCROLLS.filter((s) => !state.scrolls.includes(s.id));
+    let scrollMsg = '';
+    if (remainingScrolls.length > 0) {
+      const picked = remainingScrolls[Math.floor(Math.random() * remainingScrolls.length)];
+      state.scrolls.push(picked.id);
+      stats = computePlayerStats(state);
+      scrollMsg = `，並發現了傳說秘寶 ${picked.name}（${picked.bonusDesc}）！`;
+    }
+
+    vfx.spawnWaterWave(world.chestPos, 6.5);
+    spawnFloatingText(world.chestPos, `📦 +${bonusGold} G!`, '#fde047', true);
+    showToast(`📦 開啟上古秘寶箱！獲得 ${bonusGold} 金幣${scrollMsg}`, 'success');
+
+    pendingPerkPicks += 1;
+    renderPerksStrip();
+    updateHud();
+    triggerAutoSave();
+    openNextPerkDialog();
+  }
+
+  if (hudChestPrompt) {
+    hudChestPrompt.addEventListener('click', openCaveTreasureChest);
+  }
+
   function grantKillReward(mobType, mobName, isBoss, worldPos, expGain, goldGain, shared = false) {
-    state.gold += goldGain;
-    state.exp += expGain;
+    const mult = stats.goldExpMult || 1;
+    const finalGold = Math.round(goldGain * mult);
+    const finalExp = Math.round(expGain * mult);
+
+    state.gold += finalGold;
+    state.exp += finalExp;
     state.kills[mobType] = (state.kills[mobType] || 0) + 1;
 
     spawnFloatingText(
       worldPos || playerRoot.position,
-      shared ? `🤝 +${goldGain}G +${expGain}EXP` : `+${goldGain}G +${expGain}EXP`,
+      shared ? `🤝 +${finalGold}G +${finalExp}EXP` : `+${finalGold}G +${finalExp}EXP`,
       '#fde047',
       isBoss
     );
@@ -446,6 +649,7 @@ function initGame() {
     while (state.exp >= expForNextLevel(state.level)) {
       state.exp -= expForNextLevel(state.level);
       state.level += 1;
+      pendingPerkPicks += 1;
       leveledUp = true;
     }
     if (leveledUp) {
@@ -453,11 +657,14 @@ function initGame() {
       currentHp = stats.maxHp;
       currentMp = stats.maxMp;
       vfx.spawnWaterWave(playerRoot.position, 5.5);
-      showToast(`🎉 恭喜升級！目前等級 Lv.${state.level}（生命與魔力已全滿）`, 'success');
+      showToast(`🎉 恭喜升級！目前等級 Lv.${state.level}（請選擇一項上古肉鴿祝福）`, 'success');
+      openNextPerkDialog();
     }
 
     if (isBoss) {
-      showToast(`🏆 擊敗【${mobName}】！獲得 ${goldGain} 金幣！`, 'success');
+      pendingPerkPicks += 1;
+      showToast(`🏆 擊敗世界王【${mobName}】！獲得 ${finalGold} 金幣與額外肉鴿祝福！`, 'success');
+      openNextPerkDialog();
       triggerAutoSave();
     } else if (leveledUp) {
       triggerAutoSave();
@@ -467,7 +674,18 @@ function initGame() {
 
   function applyDamageToMob(mob, rawDmg, color = '#fef08a', isCrit = false, statusEffects = null, fromRemoteUid = null) {
     if (!mob.alive) return;
-    const dmg = Math.max(1, Math.round(rawDmg * (0.9 + Math.random() * 0.2)));
+    let scaledDmg = rawDmg;
+    // Dawnbreaker bonus (+60% damage against Undead: Zombies & Vampires)
+    if (!fromRemoteUid && mob.def.undead && stats.weapon && stats.weapon.undeadSlayer) {
+      scaledDmg *= 1.6;
+    }
+    const dmg = Math.max(1, Math.round(scaledDmg * (0.9 + Math.random() * 0.2)));
+
+    // Player Vampire Lifesteal perk
+    if (!fromRemoteUid && stats.lifesteal > 0 && !isDead) {
+      const steal = Math.max(1, Math.round(dmg * stats.lifesteal));
+      currentHp = Math.min(stats.maxHp, currentHp + steal);
+    }
 
     // If connected and we are NOT the mob AI host, forward hit to host for authoritative HP sync
     if (!fromRemoteUid && net.isConnected() && !net.isHost()) {
@@ -531,18 +749,30 @@ function initGame() {
     }
   }
 
-  function takePlayerDamage(rawDmg, attackerName = '') {
+  function takePlayerDamage(rawDmg, attackerName = '', opts = null) {
     if (isDead || dodgeAnim > 0 || isInSafeZone(playerRoot.position)) return;
-    let dmg = Math.max(1, rawDmg - stats.def * 0.7);
+    let dmg = Math.max(1, rawDmg - stats.def * 0.65);
     if (earthShieldTimer > 0) {
       dmg *= (1 - SKILLS.earth.shieldReduction);
     }
     dmg = Math.max(1, Math.round(dmg));
     currentHp = Math.max(0, currentHp - dmg);
-    spawnFloatingText(playerRoot.position, `-${dmg}`, '#f87171', false);
+    spawnFloatingText(playerRoot.position, `-${dmg}`, opts && opts.infect ? '#84cc16' : '#f87171', false);
+
+    // Zombie Plague Infection mechanic
+    if (opts && opts.infect && currentHp > 0) {
+      const wasInfected = infectionTimer > 0;
+      infectionTimer = 6.5;
+      infectionTick = 1.0;
+      vfx.spawnPoisonCloud(playerRoot.position);
+      if (!wasInfected) {
+        showToast('☣️ 你被殭屍抓傷，感染了【屍毒】！（持續扣血並減速 30%，可用R水之治癒或紅水淨化）', 'danger');
+      }
+    }
 
     if (currentHp <= 0) {
       isDead = true;
+      infectionTimer = 0;
       respawnTimer = 3.2;
       showToast(
         attackerName
@@ -576,8 +806,8 @@ function initGame() {
       if (dist <= reach + mob.def.radius) {
         toMob.normalize();
         if (toMob.dot(fwd) > 0.15 || dist < 1.8) {
-          const isCrit = Math.random() < 0.18;
-          applyDamageToMob(mob, stats.atk * (isCrit ? 1.55 : 1.0), isCrit ? '#fbbf24' : '#ffffff', isCrit);
+          const isCrit = Math.random() < 0.22;
+          applyDamageToMob(mob, stats.atk * (isCrit ? 1.6 : 1.0), isCrit ? '#fbbf24' : '#ffffff', isCrit);
         }
       }
     });
@@ -599,14 +829,15 @@ function initGame() {
 
   function performDodge() {
     if (isDead || cooldowns.dodge > 0) return;
-    cooldowns.dodge = 1.6;
+    cooldowns.dodge = 1.5 * (1 - (stats.cdReduction || 0));
     dodgeAnim = 1.0;
     dodgeDir.copy(getForwardDir());
   }
 
   function getElementMultiplier(skillId) {
     const eb = stats.weapon.elementBonus;
-    return (eb && eb.type === skillId) ? eb.mult : 1.0;
+    const weapMult = (eb && (eb.type === skillId || eb.type === 'all')) ? eb.mult : 1.0;
+    return weapMult * (stats.skillBonusMult || 1.0);
   }
 
   function castSkill(skillId) {
@@ -620,7 +851,7 @@ function initGame() {
     }
 
     currentMp -= sk.mpCost;
-    cooldowns[skillId] = sk.cooldown;
+    cooldowns[skillId] = sk.cooldown * (1 - (stats.cdReduction || 0));
     attackAnim = 0.85;
     playerRoot.rotation.y = camYaw + Math.PI;
     const fwd = getForwardDir();
@@ -704,7 +935,7 @@ function initGame() {
         (boomPos) => {
           const burnObj = {
             duration: sk.burnDuration,
-            dmg: Math.round((sk.burnDamage + state.level * 2) * elemMult)
+            dmg: Math.round((sk.burnDamage + state.level * 3) * elemMult)
           };
           mobs.forEach((m) => {
             if (!m.alive) return;
@@ -724,8 +955,12 @@ function initGame() {
       vfx.spawnWaterWave(playerRoot.position, sk.aoeRadius);
       net.broadcastFx({ type: 'water', x: playerRoot.position.x, z: playerRoot.position.z, radius: sk.aoeRadius });
 
-      const healAmt = Math.round((sk.healBase + state.level * 7) * elemMult);
+      const healAmt = Math.round((sk.healBase + state.level * 8) * elemMult);
       currentHp = Math.min(stats.maxHp, currentHp + healAmt);
+      if (infectionTimer > 0) {
+        infectionTimer = 0;
+        showToast('💧 聖泉波動已淨化你身上的屍毒感染！', 'success');
+      }
       spawnFloatingText(playerRoot.position, `+${healAmt} HP`, '#34d399', true);
 
       mobs.forEach((m) => {
@@ -765,7 +1000,7 @@ function initGame() {
         dirZ: fwd.z,
         range: sk.range
       });
-      showToast('🪨 岩石護盾已啟動（5.5 秒減傷 45%）', 'info');
+      showToast('🪨 岩石護盾已啟動（5.5 秒減傷 48%）', 'info');
 
       mobs.forEach((m) => {
         if (!m.alive) return;
@@ -796,6 +1031,49 @@ function initGame() {
           }
         }
       });
+    } else if (skillId === 'shout') {
+      // The Elder Scrolls: Dragonborn Unrelenting Force (Fus Ro Dah!)
+      vfx.spawnDragonShout(playerRoot.position, fwd, sk.range);
+      net.broadcastFx({
+        type: 'shout',
+        x: playerRoot.position.x,
+        z: playerRoot.position.z,
+        dirX: fwd.x,
+        dirZ: fwd.z,
+        range: sk.range
+      });
+      spawnFloatingText(playerRoot.position, '🗣️ FUS RO DAH!', '#38bdf8', true);
+
+      const shoutDmg = stats.atk * sk.damageMult * elemMult * (stats.shoutBonusMult || 1);
+      mobs.forEach((m) => {
+        if (!m.alive) return;
+        const toMob = new THREE.Vector3().subVectors(m.visual.group.position, playerRoot.position);
+        toMob.y = 0;
+        const dist = toMob.length();
+        if (dist <= sk.range + m.def.radius) {
+          const dot = toMob.clone().normalize().dot(fwd);
+          if (dot > 0.42 || dist < 3.2) {
+            applyDamageToMob(m, shoutDmg, '#bae6fd', true, {
+              slow: 3.2,
+              knockX: fwd.x * sk.knockback,
+              knockZ: fwd.z * sk.knockback
+            });
+          }
+        }
+      });
+
+      remoteAvatars.forEach((remote, rUid) => {
+        if (!canPvpTarget(remote)) return;
+        const toP = new THREE.Vector3().subVectors(remote.root.position, playerRoot.position);
+        toP.y = 0;
+        const dist = toP.length();
+        if (dist <= sk.range + 1.0) {
+          const dot = toP.clone().normalize().dot(fwd);
+          if (dot > 0.42 || dist < 3.2) {
+            hitRemotePlayer(rUid, remote, shoutDmg, '#bae6fd', fwd.clone().multiplyScalar(sk.knockback * 0.7));
+          }
+        }
+      });
     }
 
     updateHud();
@@ -811,6 +1089,10 @@ function initGame() {
     if (kind === 'hp') {
       const heal = SHOP_ITEMS.hp_potion.healHp;
       currentHp = Math.min(stats.maxHp, currentHp + heal);
+      if (infectionTimer > 0) {
+        infectionTimer = 0;
+        showToast('🧪 生命藥水已解除身上的屍毒感染！', 'success');
+      }
       spawnFloatingText(playerRoot.position, `+${heal} HP`, '#34d399', true);
     } else {
       const mana = SHOP_ITEMS.mp_potion.healMp;
@@ -855,10 +1137,18 @@ function initGame() {
     if (hudAuthBtn) {
       hudAuthBtn.textContent = accountUser ? '👤 登出' : '🔐 登入帳號';
     }
+    if (hudInfectionBadge) {
+      if (infectionTimer > 0) {
+        hudInfectionBadge.hidden = false;
+        hudInfectionBadge.textContent = `☣️ 屍毒感染中 (${infectionTimer.toFixed(1)}s · 減速扣血)`;
+      } else {
+        hudInfectionBadge.hidden = true;
+      }
+    }
   }
 
   function updateSkillCooldownUI() {
-    ['lightning', 'fire', 'water', 'earth', 'dodge'].forEach((id) => {
+    ['lightning', 'fire', 'water', 'earth', 'shout', 'dodge'].forEach((id) => {
       const slot = document.querySelector(`.rpg-skill-slot[data-skill="${id}"]`);
       if (!slot) return;
       const cdEl = slot.querySelector('.skill-cd');
@@ -887,6 +1177,15 @@ function initGame() {
     if (hudShopPrompt) {
       hudShopPrompt.hidden = !isNearMerchant();
     }
+    if (hudChestPrompt) {
+      const near = isNearChest();
+      hudChestPrompt.hidden = !near;
+      if (near) {
+        hudChestPrompt.textContent = chestCooldown > 0
+          ? `📦 上古秘寶箱重聚中 (${Math.ceil(chestCooldown)}s)`
+          : '📦 按 G 開啟【山洞上古秘寶箱】（金幣 / 上古卷軸 / 肉鴿祝福）';
+      }
+    }
   }
 
   function drawMinimap() {
@@ -906,8 +1205,9 @@ function initGame() {
     // Zones
     const zoneColors = {
       village: 'rgba(16, 185, 129, 0.35)',
-      goblinCamp: 'rgba(180, 83, 9, 0.35)',
-      gnomeForest: 'rgba(99, 102, 241, 0.35)',
+      greenskinWarfront: 'rgba(180, 83, 9, 0.35)',
+      zombieCavern: 'rgba(132, 204, 22, 0.36)',
+      gnomeForest: 'rgba(147, 51, 234, 0.35)',
       dragonLair: 'rgba(239, 68, 68, 0.4)'
     };
     Object.values(ZONES).forEach((z) => {
@@ -916,6 +1216,12 @@ function initGame() {
       minimapCtx.arc(cx + z.center.x * scale, cy + z.center.z * scale, z.radius * scale, 0, Math.PI * 2);
       minimapCtx.fill();
     });
+
+    // Cave Treasure Chest marker
+    if (world.chestPos) {
+      minimapCtx.fillStyle = chestCooldown <= 0 ? '#fde047' : '#64748b';
+      minimapCtx.fillRect(cx + world.chestPos.x * scale - 2.5, cy + world.chestPos.z * scale - 2.5, 5, 5);
+    }
 
     // Living mobs
     mobs.forEach((m) => {
@@ -1056,7 +1362,12 @@ function initGame() {
           appearance = { ...clone(DEFAULT_APPEARANCE), ...res.data.appearance };
         }
         if (res.data.state && Object.keys(res.data.state).length) {
-          state = { ...clone(DEFAULT_PLAYER_STATE), ...res.data.state };
+          state = {
+            ...clone(DEFAULT_PLAYER_STATE),
+            ...res.data.state,
+            perks: { ...(res.data.state.perks || {}) },
+            scrolls: [...(res.data.state.scrolls || [])]
+          };
         }
         stats = computePlayerStats(state);
         currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
@@ -1064,6 +1375,7 @@ function initGame() {
 
         syncNicknameToChat(playerNickname);
         rebuildPlayerMesh();
+        renderPerksStrip();
         updateHud();
         if (!net.isConnected()) {
           net.connect(buildMyNetworkSnapshot());
@@ -1463,6 +1775,11 @@ function initGame() {
       } else if (fx.type === 'earth') {
         const dir = new THREE.Vector3(fx.dirX || 0, 0, fx.dirZ || 1).normalize();
         vfx.spawnEarthSpikes(origin, dir, fx.range || 11);
+      } else if (fx.type === 'shout') {
+        const dir = new THREE.Vector3(fx.dirX || 0, 0, fx.dirZ || 1).normalize();
+        vfx.spawnDragonShout(origin, dir, fx.range || 15);
+      } else if (fx.type === 'frost') {
+        vfx.spawnFrostNova(origin, fx.radius || 7.0);
       }
     },
     onMobsSync(mobsMap) {
@@ -1692,13 +2009,19 @@ function initGame() {
         appearance = { ...clone(DEFAULT_APPEARANCE), ...restored.appearance };
       }
       if (restored.state && Object.keys(restored.state).length) {
-        state = { ...clone(DEFAULT_PLAYER_STATE), ...restored.state };
+        state = {
+          ...clone(DEFAULT_PLAYER_STATE),
+          ...restored.state,
+          perks: { ...(restored.state.perks || {}) },
+          scrolls: [...(restored.state.scrolls || [])]
+        };
       }
       stats = computePlayerStats(state);
       currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
       currentMp = Math.min(state.mp || stats.maxMp, stats.maxMp);
       syncNicknameToChat(playerNickname);
       rebuildPlayerMesh();
+      renderPerksStrip();
       updateHud();
       net.connect(buildMyNetworkSnapshot());
     } else {
@@ -1724,12 +2047,14 @@ function initGame() {
     if (attackAnim > 0) attackAnim = Math.max(0, attackAnim - dt * 3.4);
     if (dodgeAnim > 0) dodgeAnim = Math.max(0, dodgeAnim - dt * 2.8);
     if (earthShieldTimer > 0) earthShieldTimer = Math.max(0, earthShieldTimer - dt);
+    if (chestCooldown > 0) chestCooldown = Math.max(0, chestCooldown - dt);
 
     // Respawn handling
     if (isDead) {
       respawnTimer -= dt;
       if (respawnTimer <= 0) {
         isDead = false;
+        infectionTimer = 0;
         currentHp = stats.maxHp;
         currentMp = stats.maxMp;
         playerRoot.position.set(0, 0, 10);
@@ -1739,9 +2064,116 @@ function initGame() {
     } else {
       // Passive HP/MP regen (much faster inside Elf Village safe zone!)
       const inSafe = isInSafeZone(playerRoot.position);
-      currentMp = Math.min(stats.maxMp, currentMp + (inSafe ? 16 : 6.5) * dt);
+      currentMp = Math.min(stats.maxMp, currentMp + (inSafe ? 18 : 7.0) * dt);
       if (inSafe) {
-        currentHp = Math.min(stats.maxHp, currentHp + 20 * dt);
+        currentHp = Math.min(stats.maxHp, currentHp + 24 * dt);
+        if (infectionTimer > 0) infectionTimer = 0;
+      } else if (stats.passiveHpRegen > 0) {
+        currentHp = Math.min(stats.maxHp, currentHp + stats.passiveHpRegen * dt);
+      }
+
+      // Zombie Plague Infection DoT & Slow
+      if (infectionTimer > 0) {
+        infectionTimer = Math.max(0, infectionTimer - dt);
+        infectionTick -= dt;
+        if (infectionTick <= 0) {
+          infectionTick = 1.0;
+          const poisonDmg = Math.max(4, Math.round(stats.maxHp * 0.048 * (1 - (stats.poisonResist || 0))));
+          currentHp = Math.max(1, currentHp - poisonDmg);
+          spawnFloatingText(playerRoot.position, `☣️ -${poisonDmg}`, '#84cc16', false);
+          vfx.spawnPoisonCloud(playerRoot.position);
+        }
+      }
+
+      // --- Roguelike Auto-Weapons (Vampire Survivors style) ---
+      const perksObj = state.perks || {};
+
+      // 1. Orbiting Blades (🗡️ 環繞聖劍)
+      const bladeRanks = perksObj.orbit_blades || 0;
+      if (bladeRanks > 0) {
+        orbitAngle += dt * (2.6 + bladeRanks * 0.35);
+        orbitBladesGroup.rotation.y = orbitAngle;
+        for (const [mId, rem] of orbitHitCooldowns.entries()) {
+          if (rem - dt <= 0) orbitHitCooldowns.delete(mId);
+          else orbitHitCooldowns.set(mId, rem - dt);
+        }
+        if (!inSafe) {
+          const bladeDmg = stats.atk * (0.42 + bladeRanks * 0.22);
+          mobs.forEach((m) => {
+            if (!m.alive || orbitHitCooldowns.has(m.id)) return;
+            if (m.visual.group.position.distanceTo(playerRoot.position) <= 2.75 + m.def.radius) {
+              orbitHitCooldowns.set(m.id, 0.48);
+              applyDamageToMob(m, bladeDmg, '#fef08a', false);
+            }
+          });
+        }
+      }
+
+      // 2. Garlic Holy Fire Aura (🔥 聖炎驅魔結界)
+      const garlicRanks = perksObj.garlic_aura || 0;
+      if (garlicRanks > 0) {
+        garlicAuraMesh.rotation.z += dt * 1.2;
+        garlicTick -= dt;
+        if (garlicTick <= 0) {
+          garlicTick = 0.85;
+          if (!inSafe) {
+            const auraDmg = stats.atk * (0.34 + garlicRanks * 0.18);
+            mobs.forEach((m) => {
+              if (!m.alive) return;
+              if (m.visual.group.position.distanceTo(playerRoot.position) <= 3.85 + m.def.radius) {
+                applyDamageToMob(m, auraDmg, '#fb923c', false, {
+                  burn: { duration: 2.2, dmg: Math.round(8 + garlicRanks * 6) }
+                });
+              }
+            });
+          }
+        }
+      }
+
+      // 3. Auto Thunder Strike (⚡ 雷神自動落雷)
+      const thunderRanks = perksObj.auto_thunder || 0;
+      if (thunderRanks > 0) {
+        autoThunderTick -= dt;
+        if (autoThunderTick <= 0) {
+          autoThunderTick = Math.max(1.1, 2.7 - thunderRanks * 0.32);
+          if (!inSafe) {
+            const candidates = mobs.filter(
+              (m) => m.alive && m.visual.group.position.distanceTo(playerRoot.position) <= 13.5
+            );
+            if (candidates.length > 0) {
+              const target = candidates[Math.floor(Math.random() * candidates.length)];
+              const tPos = target.visual.group.position.clone();
+              vfx.spawnLightning(tPos, []);
+              applyDamageToMob(target, stats.atk * (0.85 + thunderRanks * 0.35), '#7dd3fc', true, { slow: 1.5 });
+            }
+          }
+        }
+      }
+
+      // 4. Frost Nova Pulse (❄️ 寒霜新星脈衝)
+      const frostRanks = perksObj.frost_nova || 0;
+      if (frostRanks > 0) {
+        frostNovaTick -= dt;
+        if (frostNovaTick <= 0) {
+          frostNovaTick = Math.max(2.2, 4.6 - frostRanks * 0.45);
+          if (!inSafe) {
+            const radius = 6.8 + frostRanks * 0.6;
+            const hasNearby = mobs.some(
+              (m) => m.alive && m.visual.group.position.distanceTo(playerRoot.position) <= radius + 1.5
+            );
+            if (hasNearby) {
+              vfx.spawnFrostNova(playerRoot.position, radius);
+              net.broadcastFx({ type: 'frost', x: playerRoot.position.x, z: playerRoot.position.z, radius });
+              const frostDmg = stats.atk * (0.65 + frostRanks * 0.28);
+              mobs.forEach((m) => {
+                if (!m.alive) return;
+                if (m.visual.group.position.distanceTo(playerRoot.position) <= radius + m.def.radius) {
+                  applyDamageToMob(m, frostDmg, '#67e8f9', false, { slow: 3.2 });
+                }
+              });
+            }
+          }
+        }
       }
 
       // Player Movement
@@ -1763,7 +2195,8 @@ function initGame() {
           move.z = -inX * sinY + inZ * cosY;
           move.normalize();
           playerRoot.rotation.y = Math.atan2(move.x, move.z);
-          move.multiplyScalar(10.5 * dt);
+          const baseSpeed = 10.5 * (stats.speedMult || 1.0) * (infectionTimer > 0 ? 0.7 : 1.0);
+          move.multiplyScalar(baseSpeed * dt);
         }
       }
 
@@ -1817,6 +2250,12 @@ function initGame() {
         return;
       }
 
+      // Forest Troll Natural Regeneration (suppressed while burning with Fire!)
+      if (mob.def.regen && mob.burnTimer <= 0 && mob.hp < mob.def.maxHp) {
+        mob.hp = Math.min(mob.def.maxHp, mob.hp + mob.def.regen * dt);
+        mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
+      }
+
       // Burn DoT
       if (mob.burnTimer > 0) {
         mob.burnTimer -= dt;
@@ -1841,7 +2280,10 @@ function initGame() {
       let moving = false;
       let attacking = false;
 
-      if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 32) {
+      // Orc Berserker Enrage below 50% HP
+      const isOrcEnraged = mob.type === 'orc' && mob.hp < mob.def.maxHp * 0.5;
+
+      if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 36) {
         // Face player
         const toPlayer = new THREE.Vector3().subVectors(playerRoot.position, pos);
         toPlayer.y = 0;
@@ -1850,19 +2292,19 @@ function initGame() {
         // Dragon special breath telegraph
         if (mob.def.isBoss) {
           mob.breathTimer -= dt;
-          if (mob.breathTimer <= 0 && distToPlayer <= 16) {
+          if (mob.breathTimer <= 0 && distToPlayer <= 18) {
             mob.breathTimer = mob.def.breathCooldown;
             const targetSpot = playerRoot.position.clone();
-            vfx.spawnDragonBreathWarning(targetSpot, 6.2, 1.35, (blastPos) => {
-              if (!isDead && playerRoot.position.distanceTo(blastPos) <= 6.2) {
-                takePlayerDamage(mob.def.atk * 1.65);
+            vfx.spawnDragonBreathWarning(targetSpot, 6.8, 1.25, (blastPos) => {
+              if (!isDead && playerRoot.position.distanceTo(blastPos) <= 6.8) {
+                takePlayerDamage(mob.def.atk * 1.75, mob.def.name);
               }
             });
           }
         }
 
         if (distToPlayer > mob.def.attackRange) {
-          const spd = mob.def.speed * (mob.slowTimer > 0 ? 0.45 : 1.0);
+          const spd = mob.def.speed * (isOrcEnraged ? 1.38 : 1.0) * (mob.slowTimer > 0 ? 0.42 : 1.0);
           toPlayer.normalize();
           const nextPos = pos.clone().addScaledVector(toPlayer, spd * dt);
           // Monsters never enter Elf Village safe zone
@@ -1874,16 +2316,30 @@ function initGame() {
           attacking = true;
           mob.atkTimer -= dt;
           if (mob.atkTimer <= 0) {
-            mob.atkTimer = mob.def.attackCooldown;
+            mob.atkTimer = mob.def.attackCooldown * (isOrcEnraged ? 0.78 : 1.0);
+            const rawAtk = mob.def.atk * (isOrcEnraged ? 1.35 : 1.0);
+
             if (mob.type === 'gnome') {
               const targetSpot = playerRoot.position.clone();
               vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
-                if (!isDead && playerRoot.position.distanceTo(hitPos) <= 3.0) {
-                  takePlayerDamage(mob.def.atk);
+                if (!isDead && playerRoot.position.distanceTo(hitPos) <= 3.2) {
+                  takePlayerDamage(rawAtk, mob.def.name);
                 }
               });
+            } else if (mob.type === 'zombie') {
+              takePlayerDamage(rawAtk, mob.def.name, { infect: true });
+            } else if (mob.type === 'vampire') {
+              takePlayerDamage(rawAtk, mob.def.name);
+              const drainHeal = Math.round(rawAtk * (mob.def.lifesteal || 0.6));
+              mob.hp = Math.min(mob.def.maxHp, mob.hp + drainHeal);
+              mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
+              spawnFloatingText(pos, `🦇 +${drainHeal}`, '#f43f5e', false);
+            } else if (mob.type === 'ogre') {
+              takePlayerDamage(rawAtk, mob.def.name);
+              const kbDir = toPlayer.clone().normalize();
+              playerRoot.position.addScaledVector(kbDir, 2.4);
             } else {
-              takePlayerDamage(mob.def.atk);
+              takePlayerDamage(rawAtk, mob.def.name);
             }
           }
         }
@@ -1918,7 +2374,7 @@ function initGame() {
     );
     camera.lookAt(playerRoot.position.x, playerRoot.position.y + 1.5, playerRoot.position.z);
 
-    world.update(dt);
+    world.update(dt, chestCooldown);
     vfx.update(dt);
 
     // Push real-time state to Firebase if connected

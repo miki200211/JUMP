@@ -280,6 +280,72 @@ export function createVfxManager(scene) {
     });
   }
 
+  /** 🗣️ Elder Scrolls Dragon Shout (Fus Ro Dah Sonic Rings) */
+  function spawnDragonShout(startPos, dir, range = 14) {
+    const group = new THREE.Group();
+    const rings = [];
+    const yaw = Math.atan2(dir.x, dir.z);
+
+    for (let i = 0; i < 3; i++) {
+      const rMat = new THREE.MeshBasicMaterial({
+        color: i === 0 ? '#fde047' : '#38bdf8',
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9
+      });
+      const rMesh = new THREE.Mesh(new THREE.RingGeometry(0.5 + i * 0.25, 0.9 + i * 0.3, 28), rMat);
+      rMesh.rotation.y = yaw;
+      rMesh.userData = { offset: i * 0.14, mat: rMat };
+      group.add(rMesh);
+      rings.push(rMesh);
+    }
+
+    addEffect(group, 0.55, (t) => {
+      rings.forEach((r) => {
+        const lt = Math.max(0, Math.min(1, (t - r.userData.offset) * 1.35));
+        const dist = lt * range;
+        r.position.set(
+          startPos.x + dir.x * dist,
+          startPos.y + 1.35,
+          startPos.z + dir.z * dist
+        );
+        r.scale.setScalar(0.6 + lt * 2.6);
+        r.userData.mat.opacity = 0.9 * (1 - lt);
+      });
+    });
+  }
+
+  /** ❄️ Roguelike Frost Nova */
+  function spawnFrostNova(centerPos, radius = 7.5) {
+    const group = new THREE.Group();
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: '#bae6fd',
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.85
+    });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.4, 1.3, 32), ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(centerPos.x, 0.2, centerPos.z);
+    group.add(ring);
+
+    addEffect(group, 0.55, (t) => {
+      ring.scale.setScalar(1 + t * (radius / 1.2));
+      ringMat.opacity = 0.85 * (1 - t);
+    });
+  }
+
+  /** ☣️ Zombie Plague Infection Poison Burst */
+  function spawnPoisonCloud(pos) {
+    const mat = new THREE.MeshBasicMaterial({ color: '#84cc16', transparent: true, opacity: 0.65 });
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.95, 12, 10), mat);
+    sphere.position.set(pos.x, 1.15, pos.z);
+    addEffect(sphere, 0.65, (t) => {
+      sphere.scale.setScalar(1 + t * 1.8);
+      mat.opacity = 0.65 * (1 - t);
+    });
+  }
+
   function update(dt) {
     for (let i = activeEffects.length - 1; i >= 0; i--) {
       const fx = activeEffects[i];
@@ -308,6 +374,9 @@ export function createVfxManager(scene) {
     spawnEarthSpikes,
     spawnBombProjectile,
     spawnDragonBreathWarning,
+    spawnDragonShout,
+    spawnFrostNova,
+    spawnPoisonCloud,
     update
   };
 }

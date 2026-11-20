@@ -923,3 +923,132 @@
   color: var(--text-secondary);
   margin: 0.5rem 0 0.6rem;
 }
+
+/* =========================================================
+   Phase 3: Roguelike Perks, Zombie Infection & Cave Chest
+   ========================================================= */
+
+.rpg-infection-badge {
+  margin-top: 0.45rem;
+  background: rgba(132, 204, 22, 0.22);
+  border: 1px solid #84cc16;
+  color: #d9f99d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 8px;
+  animation: infectPulse 1s infinite alternate;
+}
+
+.rpg-infection-badge[hidden] {
+  display: none;
+}
+
+@keyframes infectPulse {
+  from { box-shadow: 0 0 4px rgba(132, 204, 22, 0.3); }
+  to { box-shadow: 0 0 14px rgba(132, 204, 22, 0.85); }
+}
+
+.rpg-perks-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  max-width: 245px;
+}
+
+.rpg-perk-pill {
+  background: rgba(99, 102, 241, 0.24);
+  border: 1px solid rgba(165, 180, 252, 0.35);
+  color: #e0e7ff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.42rem;
+  border-radius: 6px;
+}
+
+.rpg-perk-pill.scroll {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: rgba(252, 211, 77, 0.6);
+  color: #fde68a;
+}
+
+#rpg-chest-prompt {
+  position: absolute;
+  bottom: 6.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 26;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+  color: #fff;
+  border: 1px solid rgba(254, 240, 138, 0.65);
+  padding: 0.58rem 1.25rem;
+  border-radius: 99px;
+  font-family: var(--font-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 26px rgba(245, 158, 11, 0.5);
+  animation: fadeInBubble 0.2s ease-out;
+}
+
+.rpg-perk-dialog-card {
+  max-width: 560px;
+  border-color: rgba(250, 204, 21, 0.45);
+}
+
+.rpg-perk-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.rpg-perk-card {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  background: linear-gradient(135deg, rgba(30, 27, 58, 0.92), rgba(19, 17, 38, 0.95));
+  border: 1px solid rgba(165, 180, 252, 0.28);
+  border-radius: 16px;
+  padding: 0.9rem 1.05rem;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rpg-perk-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: #fde047;
+  box-shadow: 0 8px 24px rgba(250, 204, 21, 0.25);
+}
+
+.rpg-perk-icon {
+  font-size: 2.1rem;
+  flex: none;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+}
+
+.rpg-perk-body {
+  flex: 1;
+}
+
+.rpg-perk-title {
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: #fde68a;
+  margin-bottom: 0.2rem;
+}
+
+.rpg-perk-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}

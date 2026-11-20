@@ -628,3 +628,359 @@ export function createDragonModel() {
 
   return { group: g, hpBar, animate };
 }
+
+/**
+ * Smooth Low-Poly Orc Berserker (Lv.6)
+ */
+export function createOrcModel() {
+  const g = new THREE.Group();
+  const skinMat = mat('#3f6212', 0.65);
+  const armorMat = mat('#27272a', 0.45, 0.55);
+  const tuskMat = mat('#fef3c7', 0.3);
+  const eyeMat = mat('#ef4444', 0.1, 0, '#ef4444', 1.2);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.48, 1.15, 14), armorMat);
+  torso.position.y = 1.15;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), skinMat);
+  head.position.set(0, 1.95, 0.08);
+  head.castShadow = true;
+  g.add(head);
+
+  // Orc tusks & glowing red eyes
+  [-1, 1].forEach((dir) => {
+    const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.28, 8), tuskMat);
+    tusk.position.set(dir * 0.16, 1.82, 0.44);
+    tusk.rotation.x = 0.35;
+    g.add(tusk);
+
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), eyeMat);
+    eye.position.set(dir * 0.14, 2.02, 0.44);
+    g.add(eye);
+
+    const pauldron = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), armorMat);
+    pauldron.position.set(dir * 0.66, 1.55, 0);
+    g.add(pauldron);
+  });
+
+  // Giant Battleaxe
+  const arm = new THREE.Group();
+  arm.position.set(0.66, 1.45, 0.1);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.65, 8), mat('#451a03', 0.85));
+  shaft.rotation.x = Math.PI / 2.2;
+  shaft.position.set(0, -0.1, 0.5);
+  arm.add(shaft);
+
+  const axeBlade = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.68, 0.55), mat('#9ca3af', 0.3, 0.8));
+  axeBlade.position.set(0, 0.1, 1.05);
+  arm.add(axeBlade);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('🪓 獸人狂戰士 Lv.6', '#a3e635', true);
+  hpBar.sprite.position.set(0, 2.85, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 10 : 2.8);
+    torso.position.y = 1.15 + (moving ? Math.abs(Math.sin(clk)) * 0.14 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.2) * 1.5 : Math.sin(clk) * 0.4;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Smooth Low-Poly Ogre Crusher (Lv.8 Giant Brute)
+ */
+export function createOgreModel() {
+  const g = new THREE.Group();
+  const skinMat = mat('#a16207', 0.75);
+  const bellyMat = mat('#ca8a04', 0.8);
+  const loinMat = mat('#451a03', 0.9);
+
+  // Huge rotund body
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.95, 16, 14), bellyMat);
+  body.scale.set(1.05, 1.2, 0.95);
+  body.position.y = 1.35;
+  body.castShadow = true;
+  g.add(body);
+
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.98, 0.95, 0.35, 16), loinMat);
+  belt.position.y = 0.85;
+  g.add(belt);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.48, 16, 12), skinMat);
+  head.position.set(0, 2.55, 0.18);
+  head.castShadow = true;
+  g.add(head);
+
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.55, 8), mat('#fef3c7', 0.4));
+  horn.position.set(0, 3.05, 0.28);
+  horn.rotation.x = 0.35;
+  g.add(horn);
+
+  // Massive spiked iron maul
+  const arm = new THREE.Group();
+  arm.position.set(1.05, 1.9, 0.2);
+  const maul = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.14, 2.1, 10), mat('#3f3f46', 0.4, 0.7));
+  maul.rotation.x = Math.PI / 2.2;
+  maul.position.set(0, -0.2, 0.75);
+  arm.add(maul);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('🏏 食人魔碎骨者 Lv.8', '#fb923c', true);
+  hpBar.sprite.scale.set(3.8, 1.1, 1);
+  hpBar.sprite.position.set(0, 3.7, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 7.5 : 2.2);
+    body.position.y = 1.35 + (moving ? Math.abs(Math.sin(clk)) * 0.18 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2) * 1.6 : Math.sin(clk) * 0.3;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Smooth Low-Poly Forest Troll (Lv.7 Regenerating Monster)
+ */
+export function createTrollModel() {
+  const g = new THREE.Group();
+  const skinMat = mat('#0d9488', 0.65);
+  const hairMat = mat('#dc2626', 0.7);
+
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.05, 10, 14), skinMat);
+  torso.position.y = 1.35;
+  torso.rotation.x = 0.25;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 12), skinMat);
+  head.position.set(0, 2.25, 0.28);
+  g.add(head);
+
+  // Red mohawk crest
+  const mohawk = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.55, 0.65), hairMat);
+  mohawk.position.set(0, 2.65, 0.22);
+  g.add(mohawk);
+
+  // Long troll tusks
+  [-1, 1].forEach((dir) => {
+    const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.42, 8), mat('#fef3c7', 0.3));
+    tusk.position.set(dir * 0.18, 2.15, 0.62);
+    tusk.rotation.x = 1.1;
+    g.add(tusk);
+  });
+
+  // Regeneration emerald aura ring
+  const regenRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.85, 1.05, 24),
+    new THREE.MeshBasicMaterial({ color: '#10b981', side: THREE.DoubleSide, transparent: true, opacity: 0.55 })
+  );
+  regenRing.rotation.x = -Math.PI / 2;
+  regenRing.position.y = 0.1;
+  g.add(regenRing);
+
+  const hpBar = createNameplateSprite('🌿 嗜血巨魔 [再生] Lv.7', '#34d399', true);
+  hpBar.sprite.position.set(0, 3.25, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9.5 : 3);
+    torso.position.y = 1.35 + (moving ? Math.abs(Math.sin(clk)) * 0.15 : 0);
+    regenRing.scale.setScalar(0.92 + Math.sin(clk * 2) * 0.12);
+    if (attacking) torso.rotation.x = 0.25 + Math.sin(clk * 2) * 0.45;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Smooth Low-Poly Plague Zombie (Cavern Infectious Undead)
+ */
+export function createZombieModel() {
+  const g = new THREE.Group();
+  const rotSkin = mat('#65a30d', 0.85, 0.05, '#365314', 0.25);
+  const ragMat = mat('#3f3f46', 0.9);
+  const eyeMat = mat('#bef264', 0.1, 0, '#84cc16', 1.4);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.38, 0.95, 12), ragMat);
+  torso.position.y = 1.05;
+  torso.rotation.x = 0.22;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 12), rotSkin);
+  head.position.set(0, 1.72, 0.18);
+  head.castShadow = true;
+  g.add(head);
+
+  // Outstretched zombie arms
+  const arms = new THREE.Group();
+  arms.position.set(0, 1.4, 0.15);
+  [-0.4, 0.4].forEach((ax) => {
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.58, 6, 10), rotSkin);
+    arm.rotation.x = Math.PI / 2.1;
+    arm.position.set(ax, 0, 0.35);
+    arms.add(arm);
+  });
+  g.add(arms);
+
+  [-0.12, 0.12].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeMat);
+    eye.position.set(ex, 1.75, 0.5);
+    g.add(eye);
+  });
+
+  const hpBar = createNameplateSprite('🧟 屍毒殭屍 [感染] Lv.6', '#a3e635', true);
+  hpBar.sprite.position.set(0, 2.45, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9 : 2.5);
+    torso.rotation.z = Math.sin(clk) * 0.14;
+    arms.rotation.x = attacking ? Math.sin(clk * 2.5) * 0.65 : Math.sin(clk) * 0.15;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Smooth Low-Poly Vampire Lord (Lifesteal Mini-Boss)
+ */
+export function createVampireModel() {
+  const g = new THREE.Group();
+  const paleSkin = mat('#e2e8f0', 0.45);
+  const suitMat = mat('#18181b', 0.4, 0.3);
+  const crimsonMat = mat('#991b1b', 0.5, 0.2, '#dc2626', 0.45);
+  const eyeMat = mat('#ef4444', 0.1, 0, '#ef4444', 1.5);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.44, 1.15, 16), suitMat);
+  torso.position.y = 1.25;
+  torso.castShadow = true;
+  g.add(torso);
+
+  // High-collar Vampire Crimson Cloak
+  const cloak = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.65, 12, 1, true), crimsonMat);
+  cloak.position.set(0, 1.15, -0.12);
+  g.add(cloak);
+
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.48, 0.34, 0.42, 12, 1, true, Math.PI * 0.65, Math.PI * 1.7),
+    crimsonMat
+  );
+  collar.position.set(0, 1.92, -0.05);
+  g.add(collar);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 14), paleSkin);
+  head.position.set(0, 2.02, 0.05);
+  g.add(head);
+
+  [-0.12, 0.12].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeMat);
+    eye.position.set(ex, 2.05, 0.38);
+    g.add(eye);
+  });
+
+  // Blood Rapier
+  const arm = new THREE.Group();
+  arm.position.set(0.5, 1.55, 0.15);
+  const blade = new THREE.Mesh(new THREE.ConeGeometry(0.06, 1.55, 8), crimsonMat);
+  blade.rotation.x = Math.PI / 2.1;
+  blade.position.set(0, 0, 0.75);
+  arm.add(blade);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('🦇 暗夜吸血鬼領主 [吸血] Lv.9', '#fda4af', true);
+  hpBar.sprite.scale.set(3.6, 1.05, 1);
+  hpBar.sprite.position.set(0, 2.95, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 10 : 3);
+    // Vampire levitates slightly off the ground!
+    g.position.y = 0.18 + Math.sin(clk) * 0.12;
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.5) * 1.3 : Math.sin(clk) * 0.25;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ancient Elder Scroll Treasure Chest inside the Zombie Cavern
+ */
+export function createTreasureChestModel() {
+  const g = new THREE.Group();
+  const boxMat = mat('#451a03', 0.7, 0.2);
+  const goldMat = mat('#fbbf24', 0.25, 0.85, '#f59e0b', 0.45);
+  const scrollMat = mat('#fef3c7', 0.3, 0.2, '#fde047', 0.85);
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.05, 1.15), boxMat);
+  base.position.y = 0.52;
+  base.castShadow = true;
+  g.add(base);
+
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 1.7, 12, 1, false, 0, Math.PI), goldMat);
+  lid.rotation.z = Math.PI / 2;
+  lid.position.y = 1.05;
+  g.add(lid);
+
+  // Floating glowing Elder Scroll above the chest
+  const scrollGroup = new THREE.Group();
+  scrollGroup.position.y = 2.1;
+  const scrollCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.1, 12), scrollMat);
+  scrollCyl.rotation.z = Math.PI / 2.4;
+  scrollGroup.add(scrollCyl);
+  g.add(scrollGroup);
+
+  const auraRing = new THREE.Mesh(
+    new THREE.RingGeometry(1.3, 1.6, 32),
+    new THREE.MeshBasicMaterial({ color: '#fde047', side: THREE.DoubleSide, transparent: true, opacity: 0.7 })
+  );
+  auraRing.rotation.x = -Math.PI / 2;
+  auraRing.position.y = 0.08;
+  g.add(auraRing);
+
+  const label = createNameplateSprite('📦 上古秘寶箱 [按 G 開啟寶物]', '#fde047', false);
+  label.sprite.scale.set(3.4, 0.62, 1);
+  label.sprite.position.set(0, 3.1, 0);
+  g.add(label.sprite);
+
+  let clk = 0;
+  function animate(dt, onCooldown, cdSeconds = 0) {
+    clk += dt * 3;
+    scrollGroup.rotation.y += dt * 1.8;
+    scrollGroup.position.y = 2.1 + Math.sin(clk) * 0.18;
+    scrollGroup.visible = !onCooldown;
+    auraRing.visible = !onCooldown;
+    if (onCooldown) {
+      label.redraw(`📦 寶箱重鑄中 (${Math.ceil(cdSeconds)}s)`, 1, '#9ca3af');
+    } else {
+      label.redraw('📦 上古秘寶箱 [按 G 開啟寶物]', 1, '#fde047');
+    }
+  }
+
+  return { group: g, animate };
+}
+
+/**
+ * Factory helper to create any mob model by its type key.
+ */
+export function createMobModelByType(typeKey) {
+  if (typeKey === 'goblin') return createGoblinModel();
+  if (typeKey === 'orc') return createOrcModel();
+  if (typeKey === 'ogre') return createOgreModel();
+  if (typeKey === 'troll') return createTrollModel();
+  if (typeKey === 'gnome') return createGnomeModel();
+  if (typeKey === 'zombie') return createZombieModel();
+  if (typeKey === 'vampire') return createVampireModel();
+  return createDragonModel();
+}

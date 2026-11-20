@@ -9,7 +9,7 @@
 
   <!-- Styling -->
   <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
-  <link rel="stylesheet" href="assets/css/game.css?v=3.3.0">
+  <link rel="stylesheet" href="assets/css/game.css?v=3.4.0">
 
   <!-- Three.js ES Module Import Map -->
   <script type="importmap">
@@ -138,6 +138,8 @@
           <div class="rpg-exp-track">
             <div class="rpg-exp-fill" id="rpg-exp-fill" style="width:0%"></div>
           </div>
+          <div class="rpg-infection-badge" id="rpg-infection-badge" hidden>☣️ 屍毒感染中（持續扣血＋緩速 · 按 R 水波或 1 紅水淨化）</div>
+          <div class="rpg-perks-strip" id="rpg-perks-strip"></div>
         </div>
 
         <div class="rpg-toolbar">
@@ -161,12 +163,12 @@
         </div>
         <div class="rpg-controls-hint">
           WASD 移動 · 右鍵拖曳轉視角<br>
-          左鍵 普攻 · Space 翻滾<br>
-          Q雷 E火 R水 F地 · G 精靈商店
+          左鍵 普攻 · Space 翻滾 · T 龍吼<br>
+          Q雷 E火 R水 F地 · G 商店/寶箱
         </div>
       </div>
 
-      <!-- Floating Toast, Party Invite Banner & Merchant Prompt -->
+      <!-- Floating Toast, Party Invite Banner & Merchant/Chest Prompts -->
       <div id="rpg-toast" hidden></div>
       <div class="rpg-invite-banner" id="rpg-invite-banner" hidden>
         <span id="rpg-invite-text">🤝 玩家邀請你組隊</span>
@@ -176,6 +178,7 @@
         </div>
       </div>
       <button type="button" id="rpg-shop-prompt" hidden>🧝 按 [G] 或點擊與精靈商人交易</button>
+      <button type="button" id="rpg-chest-prompt" hidden>📦 按 [G] 或點擊開啟山洞上古寶箱</button>
 
       <!-- Bottom Skill Hotbar -->
       <div class="rpg-skillbar">
@@ -199,22 +202,28 @@
           <span class="skill-name">雷電</span>
           <span class="skill-cd"></span>
         </button>
-        <button type="button" class="rpg-skill-slot" data-skill="fire" title="🔥 火焰（E）：爆裂火球＋灼燒">
+        <button type="button" class="rpg-skill-slot" data-skill="fire" title="🔥 火焰（E）：爆裂火球＋灼燒克制巨魔">
           <span class="skill-key">E</span>
           <span class="skill-icon">🔥</span>
           <span class="skill-name">火焰</span>
           <span class="skill-cd"></span>
         </button>
-        <button type="button" class="rpg-skill-slot" data-skill="water" title="💧 水（R）：範圍治療＋擊退敵人">
+        <button type="button" class="rpg-skill-slot" data-skill="water" title="💧 水（R）：範圍治療＋淨化屍毒＋擊退">
           <span class="skill-key">R</span>
           <span class="skill-icon">💧</span>
           <span class="skill-name">水</span>
           <span class="skill-cd"></span>
         </button>
-        <button type="button" class="rpg-skill-slot" data-skill="earth" title="🪨 地（F）：岩刺擊飛＋5.5秒減傷護盾">
+        <button type="button" class="rpg-skill-slot" data-skill="earth" title="🪨 地（F）：岩刺擊飛＋減傷護盾">
           <span class="skill-key">F</span>
           <span class="skill-icon">🪨</span>
           <span class="skill-name">地</span>
+          <span class="skill-cd"></span>
+        </button>
+        <button type="button" class="rpg-skill-slot" data-skill="shout" title="🗣️ 上古龍吼：不卸之力 Fus Ro Dah（T）">
+          <span class="skill-key">T</span>
+          <span class="skill-icon">🗣️</span>
+          <span class="skill-name">龍吼</span>
           <span class="skill-cd"></span>
         </button>
 
@@ -389,6 +398,15 @@
     </div>
   </dialog>
 
+  <!-- Roguelike Level-Up / Elder Scroll Boon Selection Dialog (Vampire Survivors 3-Choice) -->
+  <dialog class="modal-dialog" id="rpg-perk-dialog" aria-label="上古肉鴿天賦賜福">
+    <div class="rpg-dialog-card rpg-perk-dialog-card">
+      <h2>📜 上古卷軸・肉鴿天賦賜福</h2>
+      <p class="rpg-dialog-sub">選擇一項秘傳刻印強化你的獵魔能力（可無限疊加層數）：</p>
+      <div class="rpg-perk-choices" id="rpg-perk-choices"></div>
+    </div>
+  </dialog>
+
   <!-- Chat JavaScript Modules -->
   <script src="assets/js/config.js?v=3.2.0"></script>
   <script src="assets/js/emoji.js?v=2.0.0"></script>
@@ -396,6 +414,6 @@
   <script src="assets/js/chat.js?v=3.3.0"></script>
 
   <!-- 3D Fantasy RPG ES Module Entry -->
-  <script type="module" src="assets/js/game/main.js?v=3.3.0"></script>
+  <script type="module" src="assets/js/game/main.js?v=3.4.0"></script>
 </body>
 </html>

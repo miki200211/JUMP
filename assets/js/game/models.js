@@ -219,6 +219,70 @@ export function createCharacterModel(appearance, weaponItem, armorItem) {
     bodyRoot.add(capeMesh);
   }
 
+  // Back Wings (Animated 3D Wings!)
+  let leftWingPivot = null;
+  let rightWingPivot = null;
+  const wingStyle = appearance.wingStyle || 'none';
+  if (wingStyle && wingStyle !== 'none') {
+    const wColor = appearance.wingColor || '#f8fafc';
+    const wMat = wingStyle === 'demon'
+      ? mat(wColor, 0.45, 0.35, '#991b1b', 0.35)
+      : wingStyle === 'fairy' || wingStyle === 'cyber_blades'
+        ? mat(wColor, 0.15, 0.6, wColor, 0.85)
+        : mat(wColor, 0.35, 0.25, wColor, 0.25);
+
+    leftWingPivot = new THREE.Group();
+    leftWingPivot.position.set(-0.16, 1.42, -0.32);
+    rightWingPivot = new THREE.Group();
+    rightWingPivot.position.set(0.16, 1.42, -0.32);
+
+    const buildHalfWing = (dir) => {
+      const wg = new THREE.Group();
+      if (wingStyle === 'angel') {
+        for (let i = 0; i < 4; i++) {
+          const feather = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.65 - i * 0.1, 8, 10), wMat);
+          feather.position.set(dir * (0.35 + i * 0.18), 0.2 - i * 0.14, -0.08);
+          feather.rotation.z = dir * (-0.55 - i * 0.18);
+          wg.add(feather);
+        }
+      } else if (wingStyle === 'demon' || wingStyle === 'dragon') {
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 1.1, 8), mat('#18181b', 0.5));
+        bone.position.set(dir * 0.48, 0.32, -0.08);
+        bone.rotation.z = -dir * 0.95;
+        wg.add(bone);
+        const web = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.05, 5), wMat);
+        web.scale.set(1.2, 1.0, 0.18);
+        web.position.set(dir * 0.58, 0.05, -0.1);
+        web.rotation.z = dir * 0.55;
+        wg.add(web);
+      } else if (wingStyle === 'fairy') {
+        const upper = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 10), wMat);
+        upper.scale.set(1.3, 0.85, 0.12);
+        upper.position.set(dir * 0.52, 0.28, -0.06);
+        upper.rotation.z = -dir * 0.45;
+        wg.add(upper);
+        const lower = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), wMat);
+        lower.scale.set(1.15, 0.8, 0.12);
+        lower.position.set(dir * 0.42, -0.22, -0.06);
+        lower.rotation.z = dir * 0.35;
+        wg.add(lower);
+      } else if (wingStyle === 'cyber_blades') {
+        for (let i = 0; i < 3; i++) {
+          const blade = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.1, 0.04), wMat);
+          blade.position.set(dir * (0.55 + i * 0.12), 0.3 - i * 0.28, -0.1);
+          blade.rotation.z = dir * (0.35 - i * 0.25);
+          wg.add(blade);
+        }
+      }
+      return wg;
+    };
+
+    leftWingPivot.add(buildHalfWing(-1));
+    rightWingPivot.add(buildHalfWing(1));
+    bodyRoot.add(leftWingPivot);
+    bodyRoot.add(rightWingPivot);
+  }
+
   // Head group
   const headGroup = new THREE.Group();
   headGroup.position.y = 1.92;
@@ -228,57 +292,268 @@ export function createCharacterModel(appearance, weaponItem, armorItem) {
   head.castShadow = true;
   headGroup.add(head);
 
-  // Eyes (facing +Z)
-  [-0.13, 0.13].forEach((ex) => {
-    const sclera = new THREE.Mesh(new THREE.SphereGeometry(0.068, 12, 10), whiteMat);
+  // Eyes & Facial Expression Style (facing +Z)
+  const eyeStyle = appearance.eyeStyle || 'normal';
+  const glowingEyeMat = mat(appearance.eyeColor || '#2563eb', 0.1, 0.1, appearance.eyeColor || '#2563eb', 1.6);
+
+  [-0.13, 0.13].forEach((ex, idx) => {
+    if (eyeStyle === 'eyepatch' && idx === 0) {
+      // Obsidian Pirate / Witcher Eyepatch on left eye
+      const patch = new THREE.Mesh(new THREE.SphereGeometry(0.095, 12, 10), mat('#111827', 0.4));
+      patch.position.set(ex, 0.02, 0.31);
+      patch.scale.set(1.1, 1.0, 0.5);
+      headGroup.add(patch);
+      const strap = new THREE.Mesh(new THREE.TorusGeometry(0.375, 0.018, 6, 20), mat('#111827', 0.5));
+      strap.rotation.y = Math.PI / 2;
+      strap.rotation.x = 0.28;
+      headGroup.add(strap);
+      return;
+    }
+
+    const sclera = new THREE.Mesh(
+      new THREE.SphereGeometry(0.068, 12, 10),
+      eyeStyle === 'glowing' ? glowingEyeMat : whiteMat
+    );
     sclera.position.set(ex, 0.02, 0.31);
-    sclera.scale.set(1, 1.15, 0.6);
+    sclera.scale.set(1, eyeStyle === 'sharp' ? 0.72 : 1.15, 0.6);
     headGroup.add(sclera);
 
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), eyeMat);
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.045, 10, 8),
+      eyeStyle === 'glowing' ? glowingEyeMat : eyeMat
+    );
     pupil.position.set(ex, 0.02, 0.345);
+    if (eyeStyle === 'cat') {
+      pupil.scale.set(0.45, 1.35, 0.8);
+    }
     headGroup.add(pupil);
+
+    if (eyeStyle === 'sharp' || eyeStyle === 'scar') {
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.028, 0.04), hairMat);
+      brow.position.set(ex, 0.1, 0.33);
+      brow.rotation.z = idx === 0 ? -0.28 : 0.28;
+      headGroup.add(brow);
+    }
   });
 
-  // Elf ears
-  if (appearance.elfEars) {
+  if (eyeStyle === 'scar') {
+    const scar = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.26, 0.03), mat('#be123c', 0.5));
+    scar.position.set(-0.13, 0.02, 0.355);
+    scar.rotation.z = 0.18;
+    headGroup.add(scar);
+  }
+
+  // Ears (Human / Elf / Dark Elf / Merfolk Fin)
+  const earStyle = appearance.earStyle || (appearance.elfEars ? 'elf' : 'human');
+  if (earStyle === 'elf' || earStyle === 'dark_elf') {
     [-1, 1].forEach((dir) => {
-      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.34, 8), skinMat);
-      ear.position.set(dir * 0.42, 0.04, -0.02);
-      ear.rotation.z = -dir * 1.15;
+      const len = earStyle === 'dark_elf' ? 0.44 : 0.34;
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.075, len, 8), skinMat);
+      ear.position.set(dir * 0.43, earStyle === 'dark_elf' ? 0.0 : 0.04, -0.02);
+      ear.rotation.z = -dir * (earStyle === 'dark_elf' ? 1.42 : 1.15);
       ear.rotation.y = dir * 0.25;
       headGroup.add(ear);
     });
+  } else if (earStyle === 'fin') {
+    const finMat = mat('#06b6d4', 0.3, 0.3, '#22d3ee', 0.45);
+    [-1, 1].forEach((dir) => {
+      const fin = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.38, 5), finMat);
+      fin.scale.set(0.35, 1, 1);
+      fin.position.set(dir * 0.41, 0.05, -0.04);
+      fin.rotation.z = -dir * 0.95;
+      headGroup.add(fin);
+    });
   }
 
-  // Hair styles
-  const style = appearance.hairStyle || 'short';
-  const hairCap = new THREE.Mesh(
-    new THREE.SphereGeometry(0.395, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.58),
-    hairMat
-  );
-  hairCap.position.y = 0.04;
-  hairCap.rotation.x = -0.18;
-  headGroup.add(hairCap);
+  // Face Accessories (Beard / Mustache / Goatee / War Paint / Glasses / Sunglasses / Oni Mask)
+  const faceAcc = appearance.faceAccessory || 'none';
+  if (faceAcc === 'beard_full') {
+    const beard = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 12), hairMat);
+    beard.scale.set(1.15, 1.35, 0.85);
+    beard.position.set(0, -0.22, 0.22);
+    headGroup.add(beard);
+  } else if (faceAcc === 'mustache') {
+    [-1, 1].forEach((dir) => {
+      const stache = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.22, 8), hairMat);
+      stache.position.set(dir * 0.09, -0.1, 0.34);
+      stache.rotation.z = -dir * 1.25;
+      headGroup.add(stache);
+    });
+  } else if (faceAcc === 'goatee') {
+    const goat = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.26, 8), hairMat);
+    goat.position.set(0, -0.32, 0.28);
+    goat.rotation.x = Math.PI;
+    headGroup.add(goat);
+  } else if (faceAcc === 'war_paint') {
+    const paintMat = mat('#dc2626', 0.4, 0.1, '#ef4444', 0.5);
+    [-0.16, 0.16].forEach((px) => {
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.24, 0.03), paintMat);
+      stripe.position.set(px, -0.04, 0.34);
+      headGroup.add(stripe);
+    });
+  } else if (faceAcc === 'glasses' || faceAcc === 'sunglasses') {
+    const frameMat = mat('#fbbf24', 0.25, 0.85);
+    const lensMat = mat('#0f172a', 0.15, 0.8);
+    [-0.13, 0.13].forEach((gx) => {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.014, 8, 18), frameMat);
+      rim.position.set(gx, 0.02, 0.36);
+      headGroup.add(rim);
+      if (faceAcc === 'sunglasses') {
+        const lens = new THREE.Mesh(new THREE.CircleGeometry(0.08, 14), lensMat);
+        lens.position.set(gx, 0.02, 0.365);
+        headGroup.add(lens);
+      }
+    });
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.016, 0.02), frameMat);
+    bridge.position.set(0, 0.03, 0.36);
+    headGroup.add(bridge);
+  } else if (faceAcc === 'oni_mask') {
+    const maskMat = mat('#991b1b', 0.35, 0.3, '#dc2626', 0.35);
+    const mask = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.26, 12, 1, false, -Math.PI * 0.45, Math.PI * 0.9), maskMat);
+    mask.rotation.y = Math.PI / 2;
+    mask.position.set(0, -0.12, 0.1);
+    headGroup.add(mask);
+    [-1, 1].forEach((dir) => {
+      const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 8), whiteMat);
+      tusk.position.set(dir * 0.16, -0.1, 0.36);
+      tusk.rotation.x = 0.65;
+      headGroup.add(tusk);
+    });
+  }
+
+  // Hair styles (10 Distinct Styles!)
+  const style = appearance.hairStyle || 'spiky';
+  if (style !== 'bald') {
+    const hairCap = new THREE.Mesh(
+      new THREE.SphereGeometry(0.395, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.58),
+      hairMat
+    );
+    hairCap.position.y = 0.04;
+    hairCap.rotation.x = -0.18;
+    headGroup.add(hairCap);
+  }
 
   if (style === 'long') {
-    const backHair = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.44, 0.72, 14), hairMat);
-    backHair.position.set(0, -0.22, -0.14);
+    const backHair = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.46, 0.85, 14), hairMat);
+    backHair.position.set(0, -0.28, -0.15);
     headGroup.add(backHair);
   } else if (style === 'ponytail') {
-    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.68, 12), hairMat);
-    tail.position.set(0, -0.04, -0.46);
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.72, 12), hairMat);
+    tail.position.set(0, -0.02, -0.46);
     tail.rotation.x = -0.85;
     headGroup.add(tail);
+  } else if (style === 'twin') {
+    [-1, 1].forEach((dir) => {
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.68, 12), hairMat);
+      tail.position.set(dir * 0.36, -0.1, -0.18);
+      tail.rotation.z = dir * 0.48;
+      tail.rotation.x = 2.6;
+      headGroup.add(tail);
+    });
   } else if (style === 'spiky') {
-    for (let i = 0; i < 6; i++) {
-      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.34, 8), hairMat);
-      const angle = (i / 6) * Math.PI * 2;
-      spike.position.set(Math.cos(angle) * 0.22, 0.35, Math.sin(angle) * 0.22);
-      spike.rotation.z = -Math.cos(angle) * 0.45;
-      spike.rotation.x = Math.sin(angle) * 0.45;
+    for (let i = 0; i < 7; i++) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.36, 8), hairMat);
+      const angle = (i / 7) * Math.PI * 2;
+      spike.position.set(Math.cos(angle) * 0.22, 0.36, Math.sin(angle) * 0.22);
+      spike.rotation.z = -Math.cos(angle) * 0.48;
+      spike.rotation.x = Math.sin(angle) * 0.48;
       headGroup.add(spike);
     }
+  } else if (style === 'samurai') {
+    const knotBase = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), hairMat);
+    knotBase.position.set(0, 0.42, -0.1);
+    headGroup.add(knotBase);
+    const topKnot = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.32, 10), hairMat);
+    topKnot.position.set(0, 0.54, -0.18);
+    topKnot.rotation.x = -0.45;
+    headGroup.add(topKnot);
+  } else if (style === 'bob') {
+    const bobMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.43, 0.42, 16, 1, true, Math.PI * 0.25, Math.PI * 1.5), hairMat);
+    bobMesh.rotation.y = Math.PI / 2;
+    bobMesh.position.set(0, -0.05, -0.04);
+    headGroup.add(bobMesh);
+  } else if (style === 'mohawk') {
+    for (let i = 0; i < 5; i++) {
+      const fin = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 6), hairMat);
+      fin.position.set(0, 0.36 - Math.abs(i - 2) * 0.04, 0.22 - i * 0.14);
+      fin.rotation.x = (2 - i) * 0.25;
+      headGroup.add(fin);
+    }
+  } else if (style === 'afro') {
+    const afro = new THREE.Mesh(new THREE.SphereGeometry(0.54, 18, 16), hairMat);
+    afro.position.set(0, 0.16, -0.04);
+    headGroup.add(afro);
+  } else if (style === 'crown_braid') {
+    const braid = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.085, 10, 24), hairMat);
+    braid.rotation.x = Math.PI / 2.2;
+    braid.position.set(0, 0.22, -0.02);
+    headGroup.add(braid);
+  }
+
+  // Headgear / Crowns / Horns / Halo (9 Distinct 3D Headgears!)
+  const headgear = appearance.headgear || 'none';
+  if (headgear === 'gold_crown') {
+    const crownMat = mat('#fbbf24', 0.2, 0.85, '#f59e0b', 0.4);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.14, 16, 1, true), crownMat);
+    band.position.y = 0.38;
+    headGroup.add(band);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const point = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.18, 6), crownMat);
+      point.position.set(Math.cos(a) * 0.31, 0.5, Math.sin(a) * 0.31);
+      headGroup.add(point);
+    }
+  } else if (headgear === 'laurel') {
+    const leafMat = mat('#10b981', 0.4, 0.2, '#059669', 0.3);
+    const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.045, 8, 22, Math.PI * 1.55), leafMat);
+    wreath.rotation.x = Math.PI / 2;
+    wreath.rotation.z = -Math.PI * 0.28;
+    wreath.position.y = 0.22;
+    headGroup.add(wreath);
+  } else if (headgear === 'demon_horns' || headgear === 'dragon_horns') {
+    const hMat = headgear === 'demon_horns'
+      ? mat('#18181b', 0.35, 0.4, '#dc2626', 0.45)
+      : mat('#fef3c7', 0.35, 0.2);
+    [-1, 1].forEach((dir) => {
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.095, 0.58, 10), hMat);
+      horn.position.set(dir * 0.32, 0.44, 0.04);
+      horn.rotation.z = -dir * 0.55;
+      horn.rotation.x = headgear === 'dragon_horns' ? -0.45 : 0.35;
+      headGroup.add(horn);
+    });
+  } else if (headgear === 'halo') {
+    const haloMat = mat('#fef08a', 0.1, 0.3, '#fde047', 1.6);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.038, 10, 28), haloMat);
+    halo.rotation.x = Math.PI / 2;
+    halo.position.y = 0.62;
+    headGroup.add(halo);
+  } else if (headgear === 'wizard_hat') {
+    const hatMat = mat('#312e81', 0.6, 0.15);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 0.04, 20), hatMat);
+    brim.position.y = 0.34;
+    headGroup.add(brim);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.85, 16), hatMat);
+    cone.position.y = 0.76;
+    cone.rotation.x = -0.15;
+    headGroup.add(cone);
+  } else if (headgear === 'viking_helm') {
+    const helmMat = mat('#475569', 0.35, 0.75);
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.41, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), helmMat);
+    dome.position.y = 0.06;
+    headGroup.add(dome);
+    [-1, 1].forEach((dir) => {
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.46, 10), mat('#fef3c7', 0.3));
+      horn.position.set(dir * 0.48, 0.28, 0.05);
+      horn.rotation.z = -dir * 0.9;
+      headGroup.add(horn);
+    });
+  } else if (headgear === 'cat_ears') {
+    [-1, 1].forEach((dir) => {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.28, 4), hairMat);
+      ear.position.set(dir * 0.24, 0.42, 0.04);
+      ear.rotation.z = -dir * 0.32;
+      headGroup.add(ear);
+    });
   }
 
   // Arms
@@ -326,9 +601,10 @@ export function createCharacterModel(appearance, weaponItem, armorItem) {
   rightLeg.add(rightLegMesh);
   bodyRoot.add(rightLeg);
 
-  // Height scaling
-  const hScale = Math.max(0.86, Math.min(1.16, appearance.heightScale || 1.0));
-  bodyRoot.scale.set(hScale, hScale, hScale);
+  // Height & Body Width scaling
+  const hScale = Math.max(0.8, Math.min(1.28, appearance.heightScale || 1.0));
+  const wScale = Math.max(0.75, Math.min(1.38, appearance.bodyWidthScale || 1.0));
+  bodyRoot.scale.set(hScale * wScale, hScale, hScale * wScale);
 
   // Earth shield ring (hidden until F skill active)
   const shieldGroup = new THREE.Group();
@@ -375,6 +651,12 @@ export function createCharacterModel(appearance, weaponItem, armorItem) {
 
     if (capeMesh) {
       capeMesh.rotation.x = 0.15 + (isMoving ? 0.35 + Math.sin(walkClock * 1.4) * 0.1 : Math.sin(walkClock) * 0.04);
+    }
+
+    if (leftWingPivot && rightWingPivot) {
+      const flap = Math.sin(walkClock * (isMoving ? 1.5 : 1.1)) * 0.28;
+      leftWingPivot.rotation.y = 0.22 + flap;
+      rightWingPivot.rotation.y = -0.22 - flap;
     }
 
     shieldGroup.visible = !!shieldActive;
@@ -1274,6 +1556,285 @@ export function createHydraModel() {
 }
 
 /**
+ * Skyrim Undead Mini-Boss: Draugr Deathlord (Lv.11 — Uses Dragon Shout Fus Ro Dah!)
+ */
+export function createDraugrLordModel() {
+  const g = new THREE.Group();
+  const boneSkin = mat('#334155', 0.8);
+  const armorMat = mat('#0f172a', 0.35, 0.75);
+  const frostEyeMat = mat('#38bdf8', 0.1, 0, '#0ea5e9', 2.0);
+  const hornMat = mat('#cbd5e1', 0.4, 0.2);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 1.25, 14), armorMat);
+  torso.position.y = 1.3;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const cape = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.35, 0.08), mat('#1e293b', 0.85));
+  cape.position.set(0, 1.25, -0.35);
+  g.add(cape);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 12), boneSkin);
+  head.position.set(0, 2.15, 0.08);
+  g.add(head);
+
+  // Ancient Nord Horned Helm
+  [-1, 1].forEach((dir) => {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.68, 10), hornMat);
+    horn.position.set(dir * 0.48, 2.38, 0.1);
+    horn.rotation.z = -dir * 0.85;
+    g.add(horn);
+  });
+
+  [-0.13, 0.13].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), frostEyeMat);
+    eye.position.set(ex, 2.18, 0.42);
+    g.add(eye);
+  });
+
+  // Ebony Great Battleaxe
+  const arm = new THREE.Group();
+  arm.position.set(0.62, 1.65, 0.15);
+  const axe = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.55, 0.08), frostEyeMat);
+  axe.position.set(0, 0.25, 0.85);
+  arm.add(axe);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('❄️ 天際屍鬼死靈大君 [龍吼菁英 Lv.11]', '#38bdf8', true);
+  hpBar.sprite.scale.set(4.1, 1.1, 1);
+  hpBar.sprite.position.set(0, 3.25, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9 : 2.8);
+    torso.position.y = 1.3 + (moving ? Math.abs(Math.sin(clk)) * 0.15 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.4) * 1.45 : Math.sin(clk) * 0.28;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ancient Greek Mythology Elite: Chiron the Centaur War-Archer (Lv.11)
+ */
+export function createCentaurModel() {
+  const g = new THREE.Group();
+  const horseMat = mat('#78350f', 0.72);
+  const skinMat = mat('#d97706', 0.55);
+  const goldMat = mat('#fbbf24', 0.25, 0.85, '#f59e0b', 0.35);
+
+  // Quadruped Horse Body
+  const horseBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.48, 1.15, 10, 14), horseMat);
+  horseBody.rotation.x = Math.PI / 2;
+  horseBody.position.set(0, 1.18, -0.2);
+  horseBody.castShadow = true;
+  g.add(horseBody);
+
+  // 4 Galloping Horse Legs
+  const legs = [];
+  [[-0.32, 0.35], [0.32, 0.35], [-0.32, -0.75], [0.32, -0.75]].forEach(([lx, lz], i) => {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.75, 8, 10), horseMat);
+    leg.position.set(lx, 0.55, lz);
+    g.add(leg);
+    legs.push({ leg, phase: i * 1.5 });
+  });
+
+  // Upper Human Warrior Torso & Golden Greek Helmet
+  const humanTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 0.95, 14), goldMat);
+  humanTorso.position.set(0, 1.85, 0.45);
+  g.add(humanTorso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 12), skinMat);
+  head.position.set(0, 2.55, 0.48);
+  g.add(head);
+
+  const crest = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 0.65), mat('#dc2626', 0.5));
+  crest.position.set(0, 2.95, 0.45);
+  g.add(crest);
+
+  // Golden Warbow
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.055, 8, 18, Math.PI), goldMat);
+  bow.rotation.y = Math.PI / 2;
+  bow.position.set(0.45, 1.95, 0.95);
+  g.add(bow);
+
+  const hpBar = createNameplateSprite('🏹 喀戎・古希臘半人馬戰神 [神射 Lv.11]', '#fcd34d', true);
+  hpBar.sprite.scale.set(4.1, 1.1, 1);
+  hpBar.sprite.position.set(0, 3.6, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 11 : 3);
+    legs.forEach((l) => {
+      l.leg.rotation.x = moving ? Math.sin(clk + l.phase) * 0.65 : 0;
+    });
+    if (attacking) bow.rotation.x = Math.sin(clk * 2) * 0.35;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ancient Greek Mythology Boss 5: Cerberus the 3-Headed Underworld Hellhound (Lv.16)
+ */
+export function createCerberusModel() {
+  const g = new THREE.Group();
+  const furMat = mat('#18181b', 0.65, 0.2);
+  const magmaMat = mat('#dc2626', 0.3, 0.2, '#f97316', 1.2);
+  const eyeMat = mat('#fef08a', 0.1, 0, '#f97316', 2.0);
+
+  // Giant Hound Body
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.85, 1.65, 12, 16), furMat);
+  body.rotation.x = Math.PI / 2;
+  body.position.set(0, 1.35, 0);
+  body.castShadow = true;
+  g.add(body);
+
+  // Blazing Hellfire Mane Collar
+  const mane = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.24, 10, 22), magmaMat);
+  mane.position.set(0, 1.55, 0.78);
+  g.add(mane);
+
+  // 3 Snarling Wolf Heads (Left, Center, Right)
+  const heads = [];
+  [-0.75, 0, 0.75].forEach((hx, i) => {
+    const hg = new THREE.Group();
+    hg.position.set(hx, 1.95 + (i === 1 ? 0.18 : 0), 1.15);
+
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.46, 14, 12), furMat);
+    hg.add(skull);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.78, 10), furMat);
+    snout.rotation.x = Math.PI / 2;
+    snout.position.set(0, -0.06, 0.52);
+    hg.add(snout);
+
+    [-0.16, 0.16].forEach((ex) => {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.36, 6), furMat);
+      ear.position.set(ex, 0.45, -0.05);
+      hg.add(ear);
+
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), eyeMat);
+      eye.position.set(ex, 0.12, 0.4);
+      hg.add(eye);
+    });
+
+    g.add(hg);
+    heads.push({ hg, phase: i * 2.0 });
+  });
+
+  // 4 Muscular Hound Legs
+  const legs = [];
+  [[-0.55, 0.75], [0.55, 0.75], [-0.55, -0.85], [0.55, -0.85]].forEach(([lx, lz], i) => {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.85, 8, 10), furMat);
+    leg.position.set(lx, 0.6, lz);
+    g.add(leg);
+    legs.push({ leg, phase: i * 1.6 });
+  });
+
+  const hpBar = createNameplateSprite('🐺 刻耳柏洛斯・冥界三頭地獄犬 [冥火 Boss Lv.16]', '#fb7185', true);
+  hpBar.sprite.scale.set(4.6, 1.2, 1);
+  hpBar.sprite.position.set(0, 3.65, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 11 : 3.5);
+    legs.forEach((l) => {
+      l.leg.rotation.x = moving ? Math.sin(clk + l.phase) * 0.7 : 0;
+    });
+    heads.forEach((h) => {
+      h.hg.rotation.x = attacking ? Math.sin((clk + h.phase) * 2.5) * 0.45 : Math.sin(clk + h.phase) * 0.12;
+    });
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ancient Greek Mythology Boss 6: Chimera (Lion Head + Goat Back Head + Venom Serpent Tail + Wings Lv.17)
+ */
+export function createChimeraModel() {
+  const g = new THREE.Group();
+  const lionMat = mat('#d97706', 0.65);
+  const maneMat = mat('#991b1b', 0.7, 0.1, '#dc2626', 0.4);
+  const goatMat = mat('#475569', 0.7);
+  const snakeMat = mat('#10b981', 0.45, 0.2, '#059669', 0.4);
+  const eyeMat = mat('#fef08a', 0.1, 0, '#f59e0b', 1.8);
+
+  // Lion Body
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.82, 1.6, 12, 16), lionMat);
+  body.rotation.x = Math.PI / 2;
+  body.position.set(0, 1.4, 0);
+  body.castShadow = true;
+  g.add(body);
+
+  // 1. Roaring Lion Head with Crimson Mane
+  const lionMane = new THREE.Mesh(new THREE.SphereGeometry(0.76, 14, 12), maneMat);
+  lionMane.position.set(0, 2.0, 1.05);
+  g.add(lionMane);
+
+  const lionHead = new THREE.Mesh(new THREE.SphereGeometry(0.52, 14, 12), lionMat);
+  lionHead.position.set(0, 2.02, 1.32);
+  g.add(lionHead);
+
+  [-0.18, 0.18].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), eyeMat);
+    eye.position.set(ex, 2.12, 1.76);
+    g.add(eye);
+  });
+
+  // 2. Horned Goat Head rising from the back!
+  const goatHead = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.85, 10), goatMat);
+  goatHead.position.set(0, 2.55, 0.05);
+  goatHead.rotation.x = 0.55;
+  g.add(goatHead);
+
+  [-0.22, 0.22].forEach((gx) => {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.65, 8), mat('#fef3c7', 0.35));
+    horn.position.set(gx, 2.95, -0.15);
+    horn.rotation.x = -0.5;
+    g.add(horn);
+  });
+
+  // 3. Venomous Serpent Head as the Tail!
+  const snakeTail = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 1.75, 10), snakeMat);
+  snakeTail.position.set(0, 1.9, -1.35);
+  snakeTail.rotation.x = -0.65;
+  g.add(snakeTail);
+
+  // Flapping Dragon Wings
+  const wingL = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.2, 5), maneMat);
+  wingL.scale.set(1.2, 1, 0.16);
+  wingL.position.set(-1.35, 2.2, 0.1);
+  wingL.rotation.z = 0.95;
+  g.add(wingL);
+
+  const wingR = wingL.clone();
+  wingR.position.x = 1.35;
+  wingR.rotation.z = -0.95;
+  g.add(wingR);
+
+  const hpBar = createNameplateSprite('🦁 奇美拉・獅頭羊身蛇尾魔獸 [烈焰劇毒 Boss Lv.17]', '#fbbf24', true);
+  hpBar.sprite.scale.set(4.8, 1.22, 1);
+  hpBar.sprite.position.set(0, 3.9, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9.5 : 3.5);
+    wingL.rotation.z = 0.85 + Math.sin(clk * 1.6) * 0.38;
+    wingR.rotation.z = -0.85 - Math.sin(clk * 1.6) * 0.38;
+    snakeTail.rotation.z = Math.sin(clk) * 0.35;
+    if (attacking) lionHead.position.z = 1.32 + Math.sin(clk * 2.5) * 0.22;
+  }
+
+  return { group: g, hpBar, animate };
+}
+
+/**
  * Factory helper to create any mob model by its type key.
  */
 export function createMobModelByType(typeKey) {
@@ -1283,10 +1844,14 @@ export function createMobModelByType(typeKey) {
   if (typeKey === 'troll') return createTrollModel();
   if (typeKey === 'gnome') return createGnomeModel();
   if (typeKey === 'zombie') return createZombieModel();
+  if (typeKey === 'draugr_lord') return createDraugrLordModel();
   if (typeKey === 'vampire') return createVampireModel();
+  if (typeKey === 'centaur') return createCentaurModel();
   if (typeKey === 'minotaur') return createMinotaurModel();
   if (typeKey === 'medusa') return createMedusaModel();
   if (typeKey === 'cyclops') return createCyclopsModel();
+  if (typeKey === 'cerberus') return createCerberusModel();
+  if (typeKey === 'chimera') return createChimeraModel();
   if (typeKey === 'hydra') return createHydraModel();
   return createDragonModel();
 }

@@ -175,8 +175,11 @@ function initGame() {
   let isDead = false;
   let respawnTimer = 0;
   let earthShieldTimer = 0;
-  let infectionTimer = 0; // Zombie Plague Infection (DoT + 30% slow)
+  let infectionTimer = 0; // Zombie Plague / Hydra Venom Infection (DoT + 30% slow)
   let infectionTick = 0;
+  let petrifyTimer = 0;   // Medusa Petrifying Gaze (65% slow)
+  let playerBurnTimer = 0; // Cerberus / Chimera / Dragon Hellfire Burn DoT
+  let playerBurnTick = 0;
   let chestCooldown = 0;
   let pendingPerkPicks = 0;
 
@@ -326,8 +329,24 @@ function initGame() {
     camDist = Math.max(6, Math.min(24, camDist + e.deltaY * 0.01));
   }, { passive: false });
 
-  // --- Keyboard Controls (Strictly isolated from Chat Inputs) ---
+  // --- Keyboard Controls (Strictly isolated from Chat Inputs & Window Switch Safe) ---
   const keys = {};
+
+  function clearAllMovementKeys() {
+    for (const k of Object.keys(keys)) {
+      keys[k] = false;
+    }
+    isRightDragging = false;
+  }
+
+  // Prevent stuck movement when user Alt+Tabs, switches window, minimizes tab, or opens context menu
+  window.addEventListener('blur', clearAllMovementKeys);
+  window.addEventListener('focus', clearAllMovementKeys);
+  window.addEventListener('contextmenu', clearAllMovementKeys);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearAllMovementKeys();
+  });
+
   function isTypingInForm() {
     const el = document.activeElement;
     if (!el) return false;
@@ -346,7 +365,10 @@ function initGame() {
   }
 
   window.addEventListener('keydown', (e) => {
-    if (isTypingInForm()) return;
+    if (isTypingInForm()) {
+      clearAllMovementKeys();
+      return;
+    }
     const k = e.key.toLowerCase();
     keys[k] = true;
 
@@ -439,8 +461,13 @@ function initGame() {
       hp: def.maxHp,
       alive: true,
       respawnTimer: 0,
-      atkTimer: 0.5 + Math.random(),
-      breathTimer: def.breathCooldown || 7,
+      atkTimer: 0.4 + Math.random() * 0.8,
+      breathTimer: def.breathCooldown || 6,
+      chargeTimer: def.chargeCooldown || 5,
+      shoutTimer: def.shoutCooldown || 5.5,
+      gazeTimer: def.gazeCooldown || 5.2,
+      boulderTimer: def.boulderCooldown || 4.5,
+      dashBoostTimer: 0,
       burnTimer: 0,
       burnTick: 0,
       burnDmg: 0,
@@ -449,24 +476,30 @@ function initGame() {
     });
   }
 
-  // 1. Greenskin Warfront (Goblin Skirmishers, Orc Berserkers, Ogre Crushers, Forest Trolls)
-  [[38, 16], [46, 14], [36, 26], [44, 32]].forEach(([x, z]) => spawnMob('goblin', x, z));
-  [[52, 20], [58, 28], [48, 36]].forEach(([x, z]) => spawnMob('orc', x, z));
-  [[62, 22], [56, 38]].forEach(([x, z]) => spawnMob('ogre', x, z));
-  [[66, 30], [42, 42]].forEach(([x, z]) => spawnMob('troll', x, z));
+  // 1. Greenskin Warfront (Goblin Raiders, Orc Berserkers, Ogre Crushers, Forest Trolls)
+  [[38, 16], [46, 14], [36, 26], [44, 32], [54, 15]].forEach(([x, z]) => spawnMob('goblin', x, z));
+  [[52, 20], [58, 28], [48, 36], [62, 16]].forEach(([x, z]) => spawnMob('orc', x, z));
+  [[62, 24], [56, 38]].forEach(([x, z]) => spawnMob('ogre', x, z));
+  [[66, 32], [42, 42]].forEach(([x, z]) => spawnMob('troll', x, z));
 
-  // 2. Zombie Plague Cavern (6 Plague Zombies guarding the cave entrance & Ancient Treasure Chest)
-  [[44, -36], [50, -40], [58, -42], [48, -48], [55, -52], [60, -47]].forEach(([x, z]) => spawnMob('zombie', x, z));
+  // 2. Zombie Plague Cavern (8 Plague Zombies + 2 Skyrim Draugr Deathlords guarding the Ancient Treasure Chest!)
+  [[42, -34], [48, -38], [56, -39], [61, -43], [46, -47], [52, -49], [59, -51], [63, -47]].forEach(([x, z]) =>
+    spawnMob('zombie', x, z)
+  );
+  [[50, -43], [57, -46]].forEach(([x, z]) => spawnMob('draugr_lord', x, z));
 
-  // 3. Gnome & Vampire Blood Forest (3 Gnome Bombers + 2 Vampire Lords around the Blood Moon Altar)
-  [[-40, 10], [-48, 22], [-38, 24]].forEach(([x, z]) => spawnMob('gnome', x, z));
-  [[-54, 10], [-58, 18]].forEach(([x, z]) => spawnMob('vampire', x, z));
+  // 3. Gnome & Vampire Blood Forest (4 Gnome Bombers + 3 Vampire Progenitors around the Blood Moon Altar)
+  [[-38, 8], [-46, 20], [-36, 24], [-48, 6]].forEach(([x, z]) => spawnMob('gnome', x, z));
+  [[-54, 10], [-58, 18], [-62, 12]].forEach(([x, z]) => spawnMob('vampire', x, z));
 
-  // 4. Ancient Greek Temple Ruins & Cretan Labyrinth (Minotaur, Medusa, Cyclops, Lernaean Hydra Bosses!)
-  spawnMob('minotaur', -44, -41);
-  spawnMob('medusa', -63, -43);
-  spawnMob('cyclops', -47, -58);
-  spawnMob('hydra', -61, -59);
+  // 4. Ancient Greek Temple Ruins & Cretan Labyrinth (2 Centaur War-Archers + 6 Mythic Greek Bosses!)
+  [[-34, -30], [-46, -28]].forEach(([x, z]) => spawnMob('centaur', x, z));
+  spawnMob('minotaur', -43, -40);
+  spawnMob('medusa', -63, -42);
+  spawnMob('cyclops', -46, -57);
+  spawnMob('cerberus', -37, -51);
+  spawnMob('chimera', -68, -53);
+  spawnMob('hydra', -59, -62);
 
   // 5. Dragon Volcano Lair (1 Alduin Elder Dragon Boss)
   spawnMob('dragon', 0, -68);
@@ -763,27 +796,51 @@ function initGame() {
     }
     dmg = Math.max(1, Math.round(dmg));
     currentHp = Math.max(0, currentHp - dmg);
-    spawnFloatingText(playerRoot.position, `-${dmg}`, opts && opts.infect ? '#84cc16' : '#f87171', false);
+    const dmgColor = opts && opts.petrify
+      ? '#a8a29e'
+      : opts && opts.hellfire
+        ? '#fb923c'
+        : opts && opts.infect
+          ? '#84cc16'
+          : '#f87171';
+    spawnFloatingText(playerRoot.position, `-${dmg}`, dmgColor, false);
 
-    // Zombie Plague Infection / Hydra Venom / Medusa Petrify mechanic
+    // 1. Medusa Petrifying Gaze (65% slow for 2.6s)
+    if (opts && opts.petrify && currentHp > 0) {
+      const wasPetrified = petrifyTimer > 0;
+      petrifyTimer = Math.max(petrifyTimer, 2.6 * (1 - (stats.poisonResist || 0) * 0.5));
+      spawnFloatingText(playerRoot.position, '🗿 石化!', '#d6d3d1', true);
+      if (!wasPetrified) {
+        showToast('🗿 你遭到梅杜莎【石化凝視】！（行動僵硬減速 65%，可用 R 水之治癒或紅水解除）', 'danger');
+      }
+    }
+
+    // 2. Cerberus / Chimera / Dragon Hellfire Burn DoT
+    if (opts && opts.hellfire && currentHp > 0) {
+      const wasBurning = playerBurnTimer > 0;
+      playerBurnTimer = 4.5;
+      playerBurnTick = 0.85;
+      if (!wasBurning) {
+        showToast('🔥 你被神話巨獸的【冥火烈焰】灼傷！（持續燃燒扣血）', 'danger');
+      }
+    }
+
+    // 3. Zombie Plague Infection / Hydra Venom
     if (opts && opts.infect && currentHp > 0) {
       const wasInfected = infectionTimer > 0;
       infectionTimer = 6.5;
       infectionTick = 1.0;
       vfx.spawnPoisonCloud(playerRoot.position);
-      if (!wasInfected) {
-        showToast(
-          opts.petrify
-            ? '🗿 你受到梅杜莎的【石化凝視】與蛇毒詛咒！（大幅減速並持續扣血，可用R水之治癒或紅水淨化）'
-            : '☣️ 你感染了【屍毒 / 九頭蛇劇毒】！（持續扣血並減速 30%，可用R水之治癒或紅水淨化）',
-          'danger'
-        );
+      if (!wasInfected && !(opts && opts.petrify)) {
+        showToast('☣️ 你感染了【屍毒 / 九頭蛇劇毒】！（持續扣血並減速 30%，可用R水之治癒或紅水淨化）', 'danger');
       }
     }
 
     if (currentHp <= 0) {
       isDead = true;
       infectionTimer = 0;
+      petrifyTimer = 0;
+      playerBurnTimer = 0;
       respawnTimer = 3.2;
       showToast(
         attackerName
@@ -968,9 +1025,11 @@ function initGame() {
 
       const healAmt = Math.round((sk.healBase + state.level * 8) * elemMult);
       currentHp = Math.min(stats.maxHp, currentHp + healAmt);
-      if (infectionTimer > 0) {
+      if (infectionTimer > 0 || petrifyTimer > 0 || playerBurnTimer > 0) {
         infectionTimer = 0;
-        showToast('💧 聖泉波動已淨化你身上的屍毒感染！', 'success');
+        petrifyTimer = 0;
+        playerBurnTimer = 0;
+        showToast('💧 聖泉波動已淨化身上的屍毒、石化與冥火灼燒！', 'success');
       }
       spawnFloatingText(playerRoot.position, `+${healAmt} HP`, '#34d399', true);
 
@@ -1100,9 +1159,11 @@ function initGame() {
     if (kind === 'hp') {
       const heal = SHOP_ITEMS.hp_potion.healHp;
       currentHp = Math.min(stats.maxHp, currentHp + heal);
-      if (infectionTimer > 0) {
+      if (infectionTimer > 0 || petrifyTimer > 0 || playerBurnTimer > 0) {
         infectionTimer = 0;
-        showToast('🧪 生命藥水已解除身上的屍毒感染！', 'success');
+        petrifyTimer = 0;
+        playerBurnTimer = 0;
+        showToast('🧪 生命聖水已解除身上的屍毒、石化與冥火灼燒！', 'success');
       }
       spawnFloatingText(playerRoot.position, `+${heal} HP`, '#34d399', true);
     } else {
@@ -1149,9 +1210,13 @@ function initGame() {
       hudAuthBtn.textContent = accountUser ? '👤 登出' : '🔐 登入帳號';
     }
     if (hudInfectionBadge) {
-      if (infectionTimer > 0) {
+      const debuffs = [];
+      if (petrifyTimer > 0) debuffs.push(`🗿 石化麻痺 (${petrifyTimer.toFixed(1)}s)`);
+      if (playerBurnTimer > 0) debuffs.push(`🔥 冥火灼燒 (${playerBurnTimer.toFixed(1)}s)`);
+      if (infectionTimer > 0) debuffs.push(`☣️ 屍毒/劇毒 (${infectionTimer.toFixed(1)}s)`);
+      if (debuffs.length > 0) {
         hudInfectionBadge.hidden = false;
-        hudInfectionBadge.textContent = `☣️ 屍毒感染中 (${infectionTimer.toFixed(1)}s · 減速扣血)`;
+        hudInfectionBadge.textContent = debuffs.join(' · ');
       } else {
         hudInfectionBadge.hidden = true;
       }
@@ -1416,18 +1481,18 @@ function initGame() {
     if (!host || previewRenderer) return;
     previewScene = new THREE.Scene();
     previewScene.background = new THREE.Color('#131126');
-    previewCamera = new THREE.PerspectiveCamera(40, 1, 0.1, 30);
-    previewCamera.position.set(0, 1.55, 4.3);
-    previewCamera.lookAt(0, 1.25, 0);
+    previewCamera = new THREE.PerspectiveCamera(42, 1, 0.1, 30);
+    previewCamera.position.set(0, 1.62, 4.55);
+    previewCamera.lookAt(0, 1.32, 0);
 
-    previewScene.add(new THREE.HemisphereLight('#e0e7ff', '#1e293b', 1.1));
-    const dl = new THREE.DirectionalLight('#ffffff', 1.2);
+    previewScene.add(new THREE.HemisphereLight('#e0e7ff', '#1e293b', 1.15));
+    const dl = new THREE.DirectionalLight('#ffffff', 1.25);
     dl.position.set(3, 5, 4);
     previewScene.add(dl);
 
     previewRenderer = new THREE.WebGLRenderer({ antialias: true });
-    previewRenderer.setSize(220, 260);
-    previewCamera.aspect = 220 / 260;
+    previewRenderer.setSize(220, 300);
+    previewCamera.aspect = 220 / 300;
     previewCamera.updateProjectionMatrix();
     host.appendChild(previewRenderer.domElement);
   }
@@ -1453,24 +1518,67 @@ function initGame() {
     tick();
   }
 
+  function populateCustomizerControls(draft) {
+    const setVal = (id, v) => {
+      const el = document.getElementById(id);
+      if (el && v != null) el.value = v;
+    };
+    setVal('cust-hair-style', draft.hairStyle === 'short' ? 'bob' : (draft.hairStyle || 'spiky'));
+    setVal('cust-eye-style', draft.eyeStyle || 'normal');
+    setVal('cust-ear-style', draft.earStyle || (draft.elfEars ? 'elf' : 'human'));
+    setVal('cust-face-accessory', draft.faceAccessory || 'none');
+    setVal('cust-headgear', draft.headgear || 'none');
+    setVal('cust-wing-style', draft.wingStyle || 'none');
+    setVal('cust-hair-color', draft.hairColor || '#3b2f2f');
+    setVal('cust-skin-color', draft.skinColor || '#f5cfa0');
+    setVal('cust-eye-color', draft.eyeColor || '#2563eb');
+    setVal('cust-wing-color', draft.wingColor || '#f8fafc');
+    setVal('cust-outfit-primary', draft.outfitPrimary || '#4f46e5');
+    setVal('cust-outfit-secondary', draft.outfitSecondary || '#e2e8f0');
+    setVal('cust-cape-color', draft.capeColor || '#7c3aed');
+    setVal('cust-height', draft.heightScale || 1.0);
+    setVal('cust-body-width', draft.bodyWidthScale || 1.0);
+    const capeEl = document.getElementById('cust-cape');
+    if (capeEl) capeEl.checked = !!draft.cape;
+  }
+
+  function readCustomizerControlsIntoDraft() {
+    if (!previewDraft) return;
+    const getVal = (id, fallback) => {
+      const el = document.getElementById(id);
+      return el ? el.value : fallback;
+    };
+    previewDraft.hairStyle = getVal('cust-hair-style', 'spiky');
+    previewDraft.eyeStyle = getVal('cust-eye-style', 'normal');
+    previewDraft.earStyle = getVal('cust-ear-style', 'human');
+    previewDraft.elfEars = previewDraft.earStyle === 'elf' || previewDraft.earStyle === 'dark_elf';
+    previewDraft.faceAccessory = getVal('cust-face-accessory', 'none');
+    previewDraft.headgear = getVal('cust-headgear', 'none');
+    previewDraft.wingStyle = getVal('cust-wing-style', 'none');
+    previewDraft.hairColor = getVal('cust-hair-color', '#3b2f2f');
+    previewDraft.skinColor = getVal('cust-skin-color', '#f5cfa0');
+    previewDraft.eyeColor = getVal('cust-eye-color', '#2563eb');
+    previewDraft.wingColor = getVal('cust-wing-color', '#f8fafc');
+    previewDraft.outfitPrimary = getVal('cust-outfit-primary', '#4f46e5');
+    previewDraft.outfitSecondary = getVal('cust-outfit-secondary', '#e2e8f0');
+    previewDraft.capeColor = getVal('cust-cape-color', '#7c3aed');
+    const capeEl = document.getElementById('cust-cape');
+    previewDraft.cape = capeEl ? capeEl.checked : true;
+    previewDraft.heightScale = parseFloat(getVal('cust-height', '1.0')) || 1.0;
+    previewDraft.bodyWidthScale = parseFloat(getVal('cust-body-width', '1.0')) || 1.0;
+  }
+
   function openCustomizer() {
     if (!customizerDialog) return;
-    previewDraft = clone(appearance);
-    document.getElementById('cust-hair-style').value = previewDraft.hairStyle;
-    document.getElementById('cust-hair-color').value = previewDraft.hairColor;
-    document.getElementById('cust-skin-color').value = previewDraft.skinColor;
-    document.getElementById('cust-eye-color').value = previewDraft.eyeColor;
-    document.getElementById('cust-outfit-primary').value = previewDraft.outfitPrimary;
-    document.getElementById('cust-cape-color').value = previewDraft.capeColor;
-    document.getElementById('cust-elf-ears').checked = !!previewDraft.elfEars;
-    document.getElementById('cust-cape').checked = !!previewDraft.cape;
-    document.getElementById('cust-height').value = previewDraft.heightScale || 1.0;
+    clearAllMovementKeys();
+    previewDraft = { ...clone(DEFAULT_APPEARANCE), ...clone(appearance) };
+    populateCustomizerControls(previewDraft);
 
     const note = document.getElementById('cust-account-note');
     if (note) {
       note.textContent = accountUser
-        ? `已登入 @${accountUser} — 儲存後將同步至雲端存檔`
-        : '目前為訪客模式：捏角將暫存於本機（登入帳號可永久雲端保存）';
+        ? `已登入 @${accountUser} — 儲存後即時同步至多人連線與雲端存檔`
+        : '請先登入帳號以同步雲端外觀';
     }
 
     initPreviewCanvas();
@@ -1483,34 +1591,58 @@ function initGame() {
   const custCloseBtn = document.getElementById('rpg-customizer-close');
   if (custCloseBtn && customizerDialog) custCloseBtn.addEventListener('click', () => customizerDialog.close());
 
-  ['cust-hair-style', 'cust-hair-color', 'cust-skin-color', 'cust-eye-color',
-    'cust-outfit-primary', 'cust-cape-color', 'cust-elf-ears', 'cust-cape', 'cust-height'].forEach((id) => {
+  [
+    'cust-hair-style', 'cust-eye-style', 'cust-ear-style', 'cust-face-accessory',
+    'cust-headgear', 'cust-wing-style', 'cust-hair-color', 'cust-skin-color',
+    'cust-eye-color', 'cust-wing-color', 'cust-outfit-primary', 'cust-outfit-secondary',
+    'cust-cape-color', 'cust-cape', 'cust-height', 'cust-body-width'
+  ].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener('input', () => {
-      if (!previewDraft) return;
-      previewDraft.hairStyle = document.getElementById('cust-hair-style').value;
-      previewDraft.hairColor = document.getElementById('cust-hair-color').value;
-      previewDraft.skinColor = document.getElementById('cust-skin-color').value;
-      previewDraft.eyeColor = document.getElementById('cust-eye-color').value;
-      previewDraft.outfitPrimary = document.getElementById('cust-outfit-primary').value;
-      previewDraft.capeColor = document.getElementById('cust-cape-color').value;
-      previewDraft.elfEars = document.getElementById('cust-elf-ears').checked;
-      previewDraft.cape = document.getElementById('cust-cape').checked;
-      previewDraft.heightScale = parseFloat(document.getElementById('cust-height').value) || 1.0;
+      readCustomizerControlsIntoDraft();
       refreshPreviewModel();
     });
   });
+
+  const custRandomBtn = document.getElementById('cust-random-btn');
+  if (custRandomBtn) {
+    custRandomBtn.addEventListener('click', () => {
+      if (!previewDraft) return;
+      const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+      previewDraft.hairStyle = pick(['spiky', 'long', 'ponytail', 'twin', 'samurai', 'bob', 'mohawk', 'afro', 'crown_braid', 'bald']);
+      previewDraft.eyeStyle = pick(['normal', 'sharp', 'cat', 'glowing', 'scar', 'eyepatch']);
+      previewDraft.earStyle = pick(['human', 'elf', 'dark_elf', 'fin']);
+      previewDraft.elfEars = previewDraft.earStyle === 'elf' || previewDraft.earStyle === 'dark_elf';
+      previewDraft.faceAccessory = pick(['none', 'war_paint', 'beard_full', 'mustache', 'goatee', 'glasses', 'sunglasses', 'oni_mask']);
+      previewDraft.headgear = pick(['none', 'gold_crown', 'laurel', 'demon_horns', 'dragon_horns', 'halo', 'wizard_hat', 'viking_helm', 'cat_ears']);
+      previewDraft.wingStyle = pick(['none', 'angel', 'demon', 'dragon', 'fairy', 'cyber_blades']);
+      previewDraft.hairColor = pick(['#1e1b4b', '#f8fafc', '#dc2626', '#f59e0b', '#10b981', '#38bdf8', '#a855f7', '#ec4899', '#3b2f2f']);
+      previewDraft.skinColor = pick(['#fde68a', '#f5cfa0', '#d97706', '#c084fc', '#93c5fd', '#86efac', '#e2e8f0']);
+      previewDraft.eyeColor = pick(['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#a855f7', '#06b6d4']);
+      previewDraft.wingColor = pick(['#f8fafc', '#fef08a', '#ef4444', '#38bdf8', '#a855f7', '#34d399']);
+      previewDraft.outfitPrimary = pick(['#4f46e5', '#dc2626', '#059669', '#d97706', '#7c3aed', '#0284c7', '#18181b']);
+      previewDraft.outfitSecondary = pick(['#fbbf24', '#e2e8f0', '#38bdf8', '#f43f5e']);
+      previewDraft.capeColor = pick(['#7c3aed', '#991b1b', '#0f172a', '#0369a1', '#b45309']);
+      previewDraft.cape = Math.random() > 0.25;
+      previewDraft.heightScale = Number((0.88 + Math.random() * 0.28).toFixed(2));
+      previewDraft.bodyWidthScale = Number((0.85 + Math.random() * 0.35).toFixed(2));
+      populateCustomizerControls(previewDraft);
+      refreshPreviewModel();
+    });
+  }
 
   const custSaveBtn = document.getElementById('cust-save-btn');
   if (custSaveBtn) {
     custSaveBtn.addEventListener('click', () => {
       if (!previewDraft) return;
+      readCustomizerControlsIntoDraft();
       appearance = clone(previewDraft);
       rebuildPlayerMesh();
+      if (net.isConnected()) net.pushPlayerState(buildMyNetworkSnapshot(), true);
       triggerAutoSave();
       customizerDialog.close();
-      showToast('🎨 角色外觀已更新並儲存！', 'success');
+      showToast('🎨 角色 3D 捏臉與奇幻造型已更新並儲存！', 'success');
     });
   }
 
@@ -2067,6 +2199,8 @@ function initGame() {
       if (respawnTimer <= 0) {
         isDead = false;
         infectionTimer = 0;
+        petrifyTimer = 0;
+        playerBurnTimer = 0;
         currentHp = stats.maxHp;
         currentMp = stats.maxMp;
         playerRoot.position.set(0, 0, 10);
@@ -2079,18 +2213,37 @@ function initGame() {
       currentMp = Math.min(stats.maxMp, currentMp + (inSafe ? 18 : 7.0) * dt);
       if (inSafe) {
         currentHp = Math.min(stats.maxHp, currentHp + 24 * dt);
-        if (infectionTimer > 0) infectionTimer = 0;
+        infectionTimer = 0;
+        petrifyTimer = 0;
+        playerBurnTimer = 0;
       } else if (stats.passiveHpRegen > 0) {
         currentHp = Math.min(stats.maxHp, currentHp + stats.passiveHpRegen * dt);
       }
 
-      // Zombie Plague Infection DoT & Slow
+      // 1. Medusa Petrifying Gaze timer
+      if (petrifyTimer > 0) {
+        petrifyTimer = Math.max(0, petrifyTimer - dt);
+      }
+
+      // 2. Hellfire Burn DoT (Cerberus / Chimera / Dragon)
+      if (playerBurnTimer > 0) {
+        playerBurnTimer = Math.max(0, playerBurnTimer - dt);
+        playerBurnTick -= dt;
+        if (playerBurnTick <= 0) {
+          playerBurnTick = 0.85;
+          const fireDoT = Math.max(7, Math.round(stats.maxHp * 0.052));
+          currentHp = Math.max(1, currentHp - fireDoT);
+          spawnFloatingText(playerRoot.position, `🔥 -${fireDoT}`, '#fb923c', false);
+        }
+      }
+
+      // 3. Zombie Plague / Hydra Venom Infection DoT & Slow
       if (infectionTimer > 0) {
         infectionTimer = Math.max(0, infectionTimer - dt);
         infectionTick -= dt;
         if (infectionTick <= 0) {
           infectionTick = 1.0;
-          const poisonDmg = Math.max(4, Math.round(stats.maxHp * 0.048 * (1 - (stats.poisonResist || 0))));
+          const poisonDmg = Math.max(5, Math.round(stats.maxHp * 0.052 * (1 - (stats.poisonResist || 0))));
           currentHp = Math.max(1, currentHp - poisonDmg);
           spawnFloatingText(playerRoot.position, `☣️ -${poisonDmg}`, '#84cc16', false);
           vfx.spawnPoisonCloud(playerRoot.position);
@@ -2188,7 +2341,10 @@ function initGame() {
         }
       }
 
-      // Player Movement
+      // Player Movement (auto-clear stuck keys if typing in form or tab is hidden)
+      if (isTypingInForm() || document.hidden) {
+        clearAllMovementKeys();
+      }
       const move = new THREE.Vector3();
       if (dodgeAnim > 0) {
         move.copy(dodgeDir).multiplyScalar(17.5 * dt);
@@ -2207,7 +2363,8 @@ function initGame() {
           move.z = -inX * sinY + inZ * cosY;
           move.normalize();
           playerRoot.rotation.y = Math.atan2(move.x, move.z);
-          const baseSpeed = 10.5 * (stats.speedMult || 1.0) * (infectionTimer > 0 ? 0.7 : 1.0);
+          const slowMult = petrifyTimer > 0 ? 0.35 : (infectionTimer > 0 ? 0.7 : 1.0);
+          const baseSpeed = 10.5 * (stats.speedMult || 1.0) * slowMult;
           move.multiplyScalar(baseSpeed * dt);
         }
       }
@@ -2255,6 +2412,7 @@ function initGame() {
           mob.hp = mob.def.maxHp;
           mob.burnTimer = 0;
           mob.slowTimer = 0;
+          mob.dashBoostTimer = 0;
           mob.visual.group.position.copy(mob.home);
           mob.visual.group.visible = true;
           mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, 1);
@@ -2262,7 +2420,7 @@ function initGame() {
         return;
       }
 
-      // Forest Troll Natural Regeneration (suppressed while burning with Fire!)
+      // Forest Troll & Hydra Natural Regeneration (suppressed while burning with Fire!)
       if (mob.def.regen && mob.burnTimer <= 0 && mob.hp < mob.def.maxHp) {
         mob.hp = Math.min(mob.def.maxHp, mob.hp + mob.def.regen * dt);
         mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
@@ -2279,6 +2437,7 @@ function initGame() {
         }
       }
       if (mob.slowTimer > 0) mob.slowTimer -= dt;
+      if (mob.dashBoostTimer > 0) mob.dashBoostTimer -= dt;
 
       // Knockback velocity decay
       if (mob.knockVel.lengthSq() > 0.05) {
@@ -2292,27 +2451,72 @@ function initGame() {
       let moving = false;
       let attacking = false;
 
-      // Orc Berserker & Minotaur Enrage below 50% HP
-      const isOrcEnraged = (mob.type === 'orc' || mob.type === 'minotaur') && mob.hp < mob.def.maxHp * 0.5;
+      // Orc Berserker & Minotaur Enrage below 55% HP
+      const isEnraged = (mob.type === 'orc' || mob.type === 'minotaur' || mob.type === 'cerberus') && mob.hp < mob.def.maxHp * 0.55;
 
-      if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 36) {
+      if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 54) {
         // Face player
         const toPlayer = new THREE.Vector3().subVectors(playerRoot.position, pos);
         toPlayer.y = 0;
+        const dirToPlayer = toPlayer.clone().normalize();
         mob.visual.group.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
 
-        // Dragon & Hydra special breath telegraph
+        // 1. Special Boss / Elite Skill: Minotaur & Orc Dash Charge!
+        if (mob.def.chargeCooldown) {
+          mob.chargeTimer -= dt;
+          if (mob.chargeTimer <= 0 && distToPlayer >= 3.2 && distToPlayer <= 16) {
+            mob.chargeTimer = mob.def.chargeCooldown;
+            mob.dashBoostTimer = 0.95;
+            spawnFloatingText(pos, mob.type === 'minotaur' ? '🐂 蠻牛衝鋒!' : '🪓 狂暴躍擊!', '#fb923c', true);
+            vfx.spawnEarthSpikes(pos, dirToPlayer, 4.5);
+          }
+        }
+
+        // 2. Special Elite Skill: Skyrim Draugr Deathlord Dragon Shout (Fus Ro Dah!)
+        if (mob.def.shoutCooldown) {
+          mob.shoutTimer -= dt;
+          if (mob.shoutTimer <= 0 && distToPlayer <= 13) {
+            mob.shoutTimer = mob.def.shoutCooldown;
+            vfx.spawnDragonShout(pos, dirToPlayer, 12);
+            spawnFloatingText(pos, '🗣️ FUS RO DAH!', '#38bdf8', true);
+            if (distToPlayer <= 12) {
+              takePlayerDamage(mob.def.atk * 1.25, mob.def.name, { infect: true });
+              playerRoot.position.addScaledVector(dirToPlayer, 4.8);
+            }
+          }
+        }
+
+        // 3. Special Boss Skill: Cyclops Exploding Boulder Throw from range!
+        if (mob.def.boulderCooldown) {
+          mob.boulderTimer -= dt;
+          if (mob.boulderTimer <= 0 && distToPlayer >= 4.0 && distToPlayer <= 18) {
+            mob.boulderTimer = mob.def.boulderCooldown;
+            const targetSpot = playerRoot.position.clone();
+            spawnFloatingText(pos, '🪨 巨岩投擲!', '#facc15', true);
+            vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
+              vfx.spawnEarthSpikes(hitPos, dirToPlayer, 3.8);
+              if (!isDead && playerRoot.position.distanceTo(hitPos) <= 4.0) {
+                takePlayerDamage(mob.def.atk * 1.35, mob.def.name);
+              }
+            });
+          }
+        }
+
+        // 4. Special Boss Skill: Dragon / Hydra / Cerberus / Chimera Breath Telegraph!
         if (mob.def.breathCooldown) {
           mob.breathTimer -= dt;
-          if (mob.breathTimer <= 0 && distToPlayer <= 18) {
+          if (mob.breathTimer <= 0 && distToPlayer <= 20) {
             mob.breathTimer = mob.def.breathCooldown;
             const targetSpot = playerRoot.position.clone();
-            vfx.spawnDragonBreathWarning(targetSpot, 6.8, 1.25, (blastPos) => {
-              if (!isDead && playerRoot.position.distanceTo(blastPos) <= 6.8) {
+            vfx.spawnDragonBreathWarning(targetSpot, 7.2, 1.1, (blastPos) => {
+              if (!isDead && playerRoot.position.distanceTo(blastPos) <= 7.2) {
                 takePlayerDamage(
-                  mob.def.atk * 1.75,
+                  mob.def.atk * 1.65,
                   mob.def.name,
-                  mob.def.infect ? { infect: true } : null
+                  {
+                    infect: !!mob.def.infect,
+                    hellfire: !!mob.def.hellfire
+                  }
                 );
               }
             });
@@ -2320,9 +2524,9 @@ function initGame() {
         }
 
         if (distToPlayer > mob.def.attackRange) {
-          const spd = mob.def.speed * (isOrcEnraged ? 1.38 : 1.0) * (mob.slowTimer > 0 ? 0.42 : 1.0);
-          toPlayer.normalize();
-          const nextPos = pos.clone().addScaledVector(toPlayer, spd * dt);
+          const dashMult = mob.dashBoostTimer > 0 ? 2.25 : 1.0;
+          const spd = mob.def.speed * dashMult * (isEnraged ? 1.38 : 1.0) * (mob.slowTimer > 0 ? 0.45 : 1.0);
+          const nextPos = pos.clone().addScaledVector(dirToPlayer, spd * dt);
           // Monsters never enter Elf Village safe zone
           if (!isInSafeZone(nextPos)) {
             pos.copy(nextPos);
@@ -2332,37 +2536,51 @@ function initGame() {
           attacking = true;
           mob.atkTimer -= dt;
           if (mob.atkTimer <= 0) {
-            mob.atkTimer = mob.def.attackCooldown * (isOrcEnraged ? 0.78 : 1.0);
-            const rawAtk = mob.def.atk * (isOrcEnraged ? 1.35 : 1.0);
+            mob.atkTimer = mob.def.attackCooldown * (isEnraged ? 0.76 : 1.0);
+            const rawAtk = mob.def.atk * (isEnraged ? 1.35 : 1.0);
 
             if (mob.type === 'gnome') {
               const targetSpot = playerRoot.position.clone();
               vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
-                if (!isDead && playerRoot.position.distanceTo(hitPos) <= 3.2) {
+                if (!isDead && playerRoot.position.distanceTo(hitPos) <= 3.4) {
                   takePlayerDamage(rawAtk, mob.def.name);
                 }
               });
+            } else if (mob.type === 'centaur') {
+              // Centaur high-speed piercing arrow shot
+              vfx.spawnFireball(
+                pos,
+                dirToPlayer,
+                13,
+                (arrowPos) => !isDead && playerRoot.position.distanceTo(arrowPos) <= 1.6,
+                (hitPos) => {
+                  if (!isDead && playerRoot.position.distanceTo(hitPos) <= 2.6) {
+                    takePlayerDamage(rawAtk, mob.def.name);
+                  }
+                }
+              );
             } else if (mob.type === 'medusa') {
               // Medusa Petrifying Gaze shockwave
-              const gazeDir = toPlayer.clone().normalize();
-              vfx.spawnDragonShout(pos, gazeDir, 8.5);
+              vfx.spawnDragonShout(pos, dirToPlayer, 9.5);
               vfx.spawnPoisonCloud(playerRoot.position);
               takePlayerDamage(rawAtk, mob.def.name, { infect: true, petrify: true });
-            } else if (mob.type === 'zombie' || mob.type === 'hydra') {
+            } else if (mob.type === 'cerberus' || mob.type === 'chimera') {
+              takePlayerDamage(rawAtk, mob.def.name, {
+                hellfire: true,
+                infect: mob.type === 'chimera'
+              });
+            } else if (mob.type === 'zombie' || mob.type === 'hydra' || mob.type === 'draugr_lord') {
               takePlayerDamage(rawAtk, mob.def.name, { infect: true });
             } else if (mob.type === 'vampire') {
               takePlayerDamage(rawAtk, mob.def.name);
-              const drainHeal = Math.round(rawAtk * (mob.def.lifesteal || 0.6));
+              const drainHeal = Math.round(rawAtk * (mob.def.lifesteal || 0.75));
               mob.hp = Math.min(mob.def.maxHp, mob.hp + drainHeal);
               mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
               spawnFloatingText(pos, `🦇 +${drainHeal}`, '#f43f5e', false);
             } else if (mob.type === 'ogre' || mob.type === 'minotaur' || mob.type === 'cyclops') {
-              const kbDir = toPlayer.clone().normalize();
-              if (mob.type === 'minotaur' || mob.type === 'cyclops') {
-                vfx.spawnEarthSpikes(pos, kbDir, 5.2);
-              }
+              vfx.spawnEarthSpikes(pos, dirToPlayer, 5.4);
               takePlayerDamage(rawAtk, mob.def.name);
-              playerRoot.position.addScaledVector(kbDir, mob.type === 'cyclops' ? 3.2 : 2.5);
+              playerRoot.position.addScaledVector(dirToPlayer, mob.type === 'cyclops' ? 3.5 : 2.6);
             } else {
               takePlayerDamage(rawAtk, mob.def.name);
             }
@@ -2374,7 +2592,7 @@ function initGame() {
         toHome.y = 0;
         mob.visual.group.rotation.y = Math.atan2(toHome.x, toHome.z);
         toHome.normalize();
-        pos.addScaledVector(toHome, mob.def.speed * 0.8 * dt);
+        pos.addScaledVector(toHome, mob.def.speed * 0.85 * dt);
         moving = true;
         if (mob.hp < mob.def.maxHp) {
           mob.hp = Math.min(mob.def.maxHp, mob.hp + mob.def.maxHp * 0.08 * dt);

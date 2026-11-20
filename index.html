@@ -9,7 +9,7 @@
 
   <!-- Styling -->
   <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
-  <link rel="stylesheet" href="assets/css/game.css?v=3.5.0">
+  <link rel="stylesheet" href="assets/css/game.css?v=3.6.0">
 
   <!-- Three.js ES Module Import Map -->
   <script type="importmap">
@@ -312,38 +312,114 @@
 
   <!-- 3D Character Customizer Dialog -->
   <dialog class="modal-dialog" id="rpg-customizer-dialog" aria-label="3D 捏角色工坊">
-    <div class="rpg-dialog-card">
+    <div class="rpg-dialog-card rpg-customizer-card">
       <button type="button" class="modal-close-x" id="rpg-customizer-close" aria-label="關閉">&times;</button>
-      <h2>🎨 3D 捏角色工坊</h2>
-      <p class="rpg-dialog-sub" id="cust-account-note"></p>
+      <div class="rpg-customizer-header-row">
+        <div>
+          <h2>🎨 3D 奇幻捏臉與造型工坊</h2>
+          <p class="rpg-dialog-sub" id="cust-account-note" style="margin-bottom:0"></p>
+        </div>
+        <button type="button" class="rpg-buy-btn" id="cust-random-btn">🎲 隨機奇幻造型</button>
+      </div>
 
       <div class="rpg-customizer-grid">
         <div id="rpg-preview-host"></div>
         <div class="rpg-customizer-controls">
-          <div class="rpg-form-field" style="margin-bottom:0.2rem">
-            <label for="cust-hair-style">髮型</label>
-            <select id="cust-hair-style">
-              <option value="short">俐落短髮</option>
-              <option value="long">飄逸長髮</option>
-              <option value="ponytail">精靈馬尾</option>
-              <option value="spiky">熱血刺蝟頭</option>
-            </select>
-          </div>
-          <label class="cust-row"><span>髮色</span><input type="color" id="cust-hair-color"></label>
-          <label class="cust-row"><span>膚色</span><input type="color" id="cust-skin-color"></label>
-          <label class="cust-row"><span>瞳色</span><input type="color" id="cust-eye-color"></label>
-          <label class="cust-row"><span>服裝主色</span><input type="color" id="cust-outfit-primary"></label>
-          <label class="cust-row"><span>披風顏色</span><input type="color" id="cust-cape-color"></label>
-          <label class="cust-row"><span>精靈尖耳</span><input type="checkbox" id="cust-elf-ears"></label>
-          <label class="cust-row"><span>配戴披風</span><input type="checkbox" id="cust-cape"></label>
           <label class="cust-row">
-            <span>身高體型</span>
-            <input type="range" id="cust-height" min="0.88" max="1.14" step="0.02" value="1.0">
+            <span>💇 髮型款式</span>
+            <select id="cust-hair-style" class="cust-select">
+              <option value="spiky">熱血刺蝟頭</option>
+              <option value="long">精靈飄逸長髮</option>
+              <option value="ponytail">高馬尾劍士</option>
+              <option value="twin">雙馬尾魔導</option>
+              <option value="samurai">浪人武士髮髻</option>
+              <option value="bob">俐落短鮑伯</option>
+              <option value="mohawk">狂戰莫霍克雞冠</option>
+              <option value="afro">蓬鬆爆炸頭</option>
+              <option value="crown_braid">皇室盤髮編辮</option>
+              <option value="bald">光頭武僧</option>
+            </select>
+          </label>
+          <label class="cust-row">
+            <span>👁️ 眼神與瞳孔</span>
+            <select id="cust-eye-style" class="cust-select">
+              <option value="normal">明亮標準眼</option>
+              <option value="sharp">冷酷銳利眼</option>
+              <option value="cat">妖瞳豎仁貓眼</option>
+              <option value="glowing">上古魔神發光眼</option>
+              <option value="scar">獨眼刀疤戰神</option>
+              <option value="eyepatch">黑曜石眼罩獵人</option>
+            </select>
+          </label>
+          <label class="cust-row">
+            <span>👂 種族耳朵</span>
+            <select id="cust-ear-style" class="cust-select">
+              <option value="human">人類圓耳</option>
+              <option value="elf">精靈長尖耳</option>
+              <option value="dark_elf">闇精靈修長耳</option>
+              <option value="fin">海神人魚鰭耳</option>
+            </select>
+          </label>
+          <label class="cust-row">
+            <span>🧔 臉部特徵 / 戰紋</span>
+            <select id="cust-face-accessory" class="cust-select">
+              <option value="none">無臉部配件</option>
+              <option value="war_paint">龍裔血色戰紋</option>
+              <option value="beard_full">維京濃密大鬍子</option>
+              <option value="mustache">紳士翹八字鬍</option>
+              <option value="goatee">劍豪山羊鬍</option>
+              <option value="glasses">學者金框眼鏡</option>
+              <option value="sunglasses">暗夜酷墨鏡</option>
+              <option value="oni_mask">修羅鬼面半罩</option>
+            </select>
+          </label>
+          <label class="cust-row">
+            <span>👑 頭飾 / 冠冕 / 角</span>
+            <select id="cust-headgear" class="cust-select">
+              <option value="none">無頭飾</option>
+              <option value="gold_crown">👑 奧林帕斯黃金王冠</option>
+              <option value="laurel">🌿 古希臘桂冠花環</option>
+              <option value="demon_horns">😈 深淵魔族雙角</option>
+              <option value="dragon_horns">🐉 龍裔古龍角</option>
+              <option value="halo">😇 熾天使神聖光環</option>
+              <option value="wizard_hat">🧙 星辰巫師尖帽</option>
+              <option value="viking_helm">⚔️ 北境牛角戰盔</option>
+              <option value="cat_ears">🐱 靈巧獸耳</option>
+            </select>
+          </label>
+          <label class="cust-row">
+            <span>🪽 背部羽翼 / 聖物</span>
+            <select id="cust-wing-style" class="cust-select">
+              <option value="none">無背部羽翼</option>
+              <option value="angel">🪽 熾天使羽翼</option>
+              <option value="demon">🦇 闇夜惡魔骨翼</option>
+              <option value="dragon">🐉 煉獄古龍雙翼</option>
+              <option value="fairy">🦋 精靈幻彩蝶翼</option>
+              <option value="cyber_blades">⚡ 宙斯雷光浮游翼</option>
+            </select>
+          </label>
+          <div class="cust-color-grid">
+            <label class="cust-row"><span>髮色</span><input type="color" id="cust-hair-color"></label>
+            <label class="cust-row"><span>膚色</span><input type="color" id="cust-skin-color"></label>
+            <label class="cust-row"><span>瞳色</span><input type="color" id="cust-eye-color"></label>
+            <label class="cust-row"><span>羽翼色</span><input type="color" id="cust-wing-color"></label>
+            <label class="cust-row"><span>服裝主色</span><input type="color" id="cust-outfit-primary"></label>
+            <label class="cust-row"><span>腰帶副色</span><input type="color" id="cust-outfit-secondary"></label>
+            <label class="cust-row"><span>披風色</span><input type="color" id="cust-cape-color"></label>
+            <label class="cust-row"><span>配戴披風</span><input type="checkbox" id="cust-cape"></label>
+          </div>
+          <label class="cust-row">
+            <span>📏 身高比例</span>
+            <input type="range" id="cust-height" min="0.84" max="1.22" step="0.02" value="1.0">
+          </label>
+          <label class="cust-row">
+            <span>💪 體型壯碩度</span>
+            <input type="range" id="cust-body-width" min="0.80" max="1.30" step="0.02" value="1.0">
           </label>
         </div>
       </div>
 
-      <button type="button" class="rpg-primary-btn" id="cust-save-btn">✨ 套用並儲存外觀</button>
+      <button type="button" class="rpg-primary-btn" id="cust-save-btn">✨ 套用並雲端儲存外觀</button>
     </div>
   </dialog>
 
@@ -414,6 +490,6 @@
   <script src="assets/js/chat.js?v=3.3.0"></script>
 
   <!-- 3D Fantasy RPG ES Module Entry -->
-  <script type="module" src="assets/js/game/main.js?v=3.5.0"></script>
+  <script type="module" src="assets/js/game/main.js?v=3.6.0"></script>
 </body>
 </html>

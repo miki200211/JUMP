@@ -2,10 +2,28 @@
  * RPG Account Authentication & Cloud Save Client (via Google Apps Script)
  * Supports SHA-256 hashed account login/register + local guest fallback.
  */
-import { DEFAULT_APPEARANCE, DEFAULT_PLAYER_STATE } from './data.js';
+import { DEFAULT_APPEARANCE, DEFAULT_PLAYER_STATE, RPG_DATA_EPOCH } from './data.js';
 
 const STORAGE_AUTH_KEY = 'jump_rpg_auth_v1';
 const STORAGE_LOCAL_SAVE_KEY = 'jump_rpg_local_save_v1';
+const STORAGE_EPOCH_KEY = 'jump_rpg_data_epoch';
+
+/**
+ * Automatically wipe stale client-side RPG session & local save when the
+ * server database epoch advances (Season Wipe), while preserving chat data.
+ */
+export function enforceClientDataEpoch() {
+  try {
+    const savedEpoch = parseInt(localStorage.getItem(STORAGE_EPOCH_KEY) || '1', 10);
+    if (savedEpoch < RPG_DATA_EPOCH) {
+      localStorage.removeItem(STORAGE_AUTH_KEY);
+      localStorage.removeItem(STORAGE_LOCAL_SAVE_KEY);
+      localStorage.setItem(STORAGE_EPOCH_KEY, String(RPG_DATA_EPOCH));
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
 
 export async function hashPassword(username, password) {
   const input = `jump_rpg_salt_v1:${username.trim().toLowerCase()}:${password}`;

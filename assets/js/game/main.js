@@ -7,6 +7,8 @@ import * as THREE from 'three';
 import {
   DEFAULT_APPEARANCE,
   DEFAULT_PLAYER_STATE,
+  RPG_DATA_EPOCH,
+  MAX_PERK_LEVEL,
   MATERIALS,
   SHOP_ITEMS,
   SKILLS,
@@ -26,6 +28,7 @@ import {
 import { buildWorld } from './world.js';
 import { createVfxManager } from './vfx.js';
 import {
+  enforceClientDataEpoch,
   loadSavedSession,
   saveSession,
   loadLocalFallbackSave,
@@ -165,14 +168,42 @@ function initGame() {
   const remoteAvatars = new Map(); // uid -> { root, model, nameplate, sig, targetPos, targetRotY, data, attackAnim }
   let lastAttackStamp = 0;
 
+  // Clear stale client RPG sessions & local saves if database epoch advanced (Season Wipe)
+  enforceClientDataEpoch();
+
+  function sanitizePerks(perksObj) {
+    const clean = {};
+    if (!perksObj || typeof perksObj !== 'object') return clean;
+    for (const [k, v] of Object.entries(perksObj)) {
+      const n = Math.min(MAX_PERK_LEVEL, Math.max(0, Math.floor(Number(v) || 0)));
+      if (n > 0) clean[k] = n;
+    }
+    return clean;
+  }
+
+  function normalizeLoadedState(rawState) {
+    if (!rawState || typeof rawState !== 'object' || (rawState.dataEpoch || 1) < RPG_DATA_EPOCH) {
+      return { state: clone(DEFAULT_PLAYER_STATE), wasReset: !!(rawState && Object.keys(rawState).length) };
+    }
+    const merged = {
+      ...clone(DEFAULT_PLAYER_STATE),
+      ...rawState,
+      dataEpoch: RPG_DATA_EPOCH,
+      perks: sanitizePerks(rawState.perks),
+      scrolls: [...(rawState.scrolls || [])],
+      materials: { ...(rawState.materials || {}) }
+    };
+    return { state: merged, wasReset: false };
+  }
+
   // Try restore local save immediately
   const localSave = loadLocalFallbackSave();
   if (localSave) {
     if (localSave.nickname) playerNickname = localSave.nickname;
     if (localSave.appearance) appearance = { ...clone(DEFAULT_APPEARANCE), ...localSave.appearance };
-    if (localSave.state) state = { ...clone(DEFAULT_PLAYER_STATE), ...localSave.state };
+    if (localSave.state) state = normalizeLoadedState(localSave.state).state;
   }
-  state.perks = state.perks || {};
+  state.perks = sanitizePerks(state.perks);
   state.scrolls = state.scrolls || [];
   state.materials = state.materials || {};
 
@@ -251,7 +282,7 @@ function initGame() {
     while (orbitBladesGroup.children.length > 0) {
       orbitBladesGroup.remove(orbitBladesGroup.children[0]);
     }
-    const bladeRanks = (state.perks && state.perks.orbit_blades) || 0;
+    const bladeRanks = Math.min(MAX_PERK_LEVEL, (state.perks && state.perks.orbit_blades) || 0);
     if (bladeRanks > 0) {
       const bladeCount = Math.min(6, bladeRanks + 1);
       const bladeMat = new THREE.MeshStandardMaterial({
@@ -646,12 +677,13 @@ function initGame() {
     hudPerksStrip.textContent = '';
     const perksObj = state.perks || {};
     ROGUELIKE_PERKS.forEach((p) => {
-      const rank = perksObj[p.id] || 0;
+      const rank = Math.min(MAX_PERK_LEVEL, perksObj[p.id] || 0);
       if (rank <= 0) return;
+      const isMax = rank >= MAX_PERK_LEVEL;
       const chip = document.createElement('span');
       chip.className = 'rpg-perk-chip';
-      chip.title = `${p.name} (Lv.${rank})：${p.desc}`;
-      chip.textContent = `${p.icon} ${p.name.replace(/^[^\s]+\s*/, '')} Lv.${rank}`;
+      chip.title = `${p.name} (Lv.${rank}/${MAX_PERK_LEVEL})：${p.desc}`;
+      chip.textContent = `${p.icon} ${p.name.replace(/^[^\s]+\s*/, '')} Lv.${rank}${isMax ? ' MAX' : `/${MAX_PERK_LEVEL}`}`;
       hudPerksStrip.appendChild(chip);
     });
     const scrolls = state.scrolls || [];
@@ -669,31 +701,45 @@ function initGame() {
     if (!perkDialog || !perkChoicesEl) return;
     if (perkDialog.open || pendingPerkPicks <= 0) return;
 
-    if (!state.perks) state.perks = {};
-    // Pick 3 random distinct perks from ROGUELIKE_PERKS
-    const pool = [...ROGUELIKE_PERKS];
+    state.perks = sanitizePerks(state.perks);
+    // Filter strictly to perks below MAX_PERK_LEVEL (Lv.5)!
+    const pool = ROGUELIKE_PERKS.filter((p) => (state.perks[p.id] || 0) < MAX_PERK_LEVEL);
+    if (pool.length === 0) {
+      // All 10 Roguelike perks are already at MAX Lv.5 — grant gold & full restore instead!
+      const bonusG = Math.round(450 * (stats.goldExpMult || 1));
+      state.gold += bonusG;
+      currentHp = stats.maxHp;
+      currentMp = stats.maxMp;
+      pendingPerkPicks = 0;
+      updateHud();
+      triggerAutoSave();
+      showToast(`✨ 所有肉鴿天賦皆已達最高 Lv.${MAX_PERK_LEVEL} 滿級！改贈 +${bonusG} 金幣與狀態全滿！`, 'success');
+      return;
+    }
+
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const tmp = pool[i];
       pool[i] = pool[j];
       pool[j] = tmp;
     }
-    const choices = pool.slice(0, 3);
+    const choices = pool.slice(0, Math.min(3, pool.length));
     perkChoicesEl.textContent = '';
 
     choices.forEach((perk) => {
       const curRank = state.perks[perk.id] || 0;
+      const nextRank = Math.min(MAX_PERK_LEVEL, curRank + 1);
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'rpg-perk-card';
       card.innerHTML = `
         <div class="rpg-perk-icon">${perk.icon}</div>
         <div class="rpg-perk-title">${perk.name}</div>
-        <div class="rpg-perk-rank">目前等級 Lv.${curRank} → Lv.${curRank + 1}</div>
+        <div class="rpg-perk-rank">目前等級 Lv.${curRank}/${MAX_PERK_LEVEL} → Lv.${nextRank}${nextRank >= MAX_PERK_LEVEL ? ' (MAX)' : ''}</div>
         <div class="rpg-perk-desc">${perk.desc}</div>
       `;
       card.addEventListener('click', () => {
-        state.perks[perk.id] = (state.perks[perk.id] || 0) + 1;
+        state.perks[perk.id] = Math.min(MAX_PERK_LEVEL, (state.perks[perk.id] || 0) + 1);
         pendingPerkPicks = Math.max(0, pendingPerkPicks - 1);
         stats = computePlayerStats(state);
         currentHp = Math.min(stats.maxHp, currentHp + 35);
@@ -703,7 +749,7 @@ function initGame() {
         updateHud();
         triggerAutoSave();
         perkDialog.close();
-        showToast(`✨ 獲得肉鴿祝福：【${perk.name}】Lv.${state.perks[perk.id]}！`, 'success');
+        showToast(`✨ 獲得肉鴿祝福：【${perk.name}】Lv.${state.perks[perk.id]}/${MAX_PERK_LEVEL}！`, 'success');
         if (pendingPerkPicks > 0) {
           setTimeout(openNextPerkDialog, 180);
         }
@@ -1573,14 +1619,11 @@ function initGame() {
         if (res.data.appearance && Object.keys(res.data.appearance).length) {
           appearance = { ...clone(DEFAULT_APPEARANCE), ...res.data.appearance };
         }
+        let wasSeasonReset = false;
         if (res.data.state && Object.keys(res.data.state).length) {
-          state = {
-            ...clone(DEFAULT_PLAYER_STATE),
-            ...res.data.state,
-            perks: { ...(res.data.state.perks || {}) },
-            scrolls: [...(res.data.state.scrolls || [])],
-            materials: { ...(res.data.state.materials || {}) }
-          };
+          const norm = normalizeLoadedState(res.data.state);
+          state = norm.state;
+          wasSeasonReset = norm.wasReset;
         }
         stats = computePlayerStats(state);
         currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
@@ -1591,13 +1634,19 @@ function initGame() {
         rescaleLivingMobsToPlayerLevel();
         renderPerksStrip();
         updateHud();
+        if (wasSeasonReset) triggerAutoSave();
         if (!net.isConnected()) {
           net.connect(buildMyNetworkSnapshot());
         } else {
           net.pushPlayerState(buildMyNetworkSnapshot(), true);
         }
         authDialog.close();
-        showToast(`✨ 歡迎回來，${playerNickname}！聊天室與遊戲名稱已同步`, 'success');
+        showToast(
+          wasSeasonReset
+            ? `🔄 新賽季重置完成！${playerNickname} 已從 Lv.1 重新出發（天賦上限 Lv.${MAX_PERK_LEVEL}）`
+            : `✨ 歡迎回來，${playerNickname}！聊天室與遊戲名稱已同步`,
+          'success'
+        );
       } else {
         const msg = (res && res.error && res.error.message) || '驗證失敗，請確認帳密或後端是否已部署最新版。';
         if (authErrorEl) authErrorEl.textContent = msg;
@@ -2498,14 +2547,11 @@ function initGame() {
       if (restored.appearance && Object.keys(restored.appearance).length) {
         appearance = { ...clone(DEFAULT_APPEARANCE), ...restored.appearance };
       }
+      let wasSeasonReset = false;
       if (restored.state && Object.keys(restored.state).length) {
-        state = {
-          ...clone(DEFAULT_PLAYER_STATE),
-          ...restored.state,
-          perks: { ...(restored.state.perks || {}) },
-          scrolls: [...(restored.state.scrolls || [])],
-          materials: { ...(restored.state.materials || {}) }
-        };
+        const norm = normalizeLoadedState(restored.state);
+        state = norm.state;
+        wasSeasonReset = norm.wasReset;
       }
       stats = computePlayerStats(state);
       currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
@@ -2515,6 +2561,10 @@ function initGame() {
       rescaleLivingMobsToPlayerLevel();
       renderPerksStrip();
       updateHud();
+      if (wasSeasonReset) {
+        triggerAutoSave();
+        showToast(`🔄 新賽季重置完成！已從 Lv.1 重新出發（天賦最高 Lv.${MAX_PERK_LEVEL}）`, 'success');
+      }
       net.connect(buildMyNetworkSnapshot());
     } else {
       saveSession(null);
@@ -2598,11 +2648,11 @@ function initGame() {
         }
       }
 
-      // --- Roguelike Auto-Weapons (Vampire Survivors style) ---
+      // --- Roguelike Auto-Weapons (Vampire Survivors style, Max Lv.5) ---
       const perksObj = state.perks || {};
 
       // 1. Orbiting Blades (🗡️ 環繞聖劍)
-      const bladeRanks = perksObj.orbit_blades || 0;
+      const bladeRanks = Math.min(MAX_PERK_LEVEL, perksObj.orbit_blades || 0);
       if (bladeRanks > 0) {
         orbitAngle += dt * (2.6 + bladeRanks * 0.35);
         orbitBladesGroup.rotation.y = orbitAngle;
@@ -2623,7 +2673,7 @@ function initGame() {
       }
 
       // 2. Garlic Holy Fire Aura (🔥 聖炎驅魔結界)
-      const garlicRanks = perksObj.garlic_aura || 0;
+      const garlicRanks = Math.min(MAX_PERK_LEVEL, perksObj.garlic_aura || 0);
       if (garlicRanks > 0) {
         garlicAuraMesh.rotation.z += dt * 1.2;
         garlicTick -= dt;
@@ -2644,7 +2694,7 @@ function initGame() {
       }
 
       // 3. Auto Thunder Strike (⚡ 雷神自動落雷)
-      const thunderRanks = perksObj.auto_thunder || 0;
+      const thunderRanks = Math.min(MAX_PERK_LEVEL, perksObj.auto_thunder || 0);
       if (thunderRanks > 0) {
         autoThunderTick -= dt;
         if (autoThunderTick <= 0) {
@@ -2664,7 +2714,7 @@ function initGame() {
       }
 
       // 4. Frost Nova Pulse (❄️ 寒霜新星脈衝)
-      const frostRanks = perksObj.frost_nova || 0;
+      const frostRanks = Math.min(MAX_PERK_LEVEL, perksObj.frost_nova || 0);
       if (frostRanks > 0) {
         frostNovaTick -= dt;
         if (frostNovaTick <= 0) {

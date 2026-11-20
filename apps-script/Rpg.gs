@@ -174,3 +174,21 @@ function safeParseJson(str, fallback) {
     return fallback;
   }
 }
+
+/**
+ * Admin Utility (Run manually in Apps Script Editor):
+ * Wipes all player accounts & saves in JumpApp/rpg_players (keeps header row 1)
+ * while preserving all chatroom messages in JumpApp/messages.
+ */
+function resetAllRpgPlayers() {
+  return withLock(function() {
+    const ss = getSpreadsheet(PLAYERS_FILE);
+    const sheet = ss.getSheets()[0];
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      sheet.deleteRows(2, lastRow - 1);
+    }
+    Logger.log('Cleared ' + Math.max(0, lastRow - 1) + ' RPG player records from rpg_players.');
+    return { cleared: Math.max(0, lastRow - 1) };
+  });
+}

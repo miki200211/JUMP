@@ -29,7 +29,11 @@ export const DEFAULT_APPEARANCE = {
   bodyWidthScale: 1.0
 };
 
+export const RPG_DATA_EPOCH = 2;
+export const MAX_PERK_LEVEL = 5;
+
 export const DEFAULT_PLAYER_STATE = {
+  dataEpoch: RPG_DATA_EPOCH,
   level: 1,
   exp: 0,
   gold: 150,
@@ -39,7 +43,7 @@ export const DEFAULT_PLAYER_STATE = {
   armorId: 'cloth_tunic',
   ownedItems: ['wood_sword', 'cloth_tunic'],
   potions: { hp: 3, mp: 3, megaHp: 0, elixir: 0 },
-  perks: {},          // { perkId: levelCount }
+  perks: {},          // { perkId: levelCount (max 5) }
   scrolls: [],        // Collected Elder Scroll IDs
   materials: {},      // { materialId: count } — Monster Hunter & Baldur's Gate Crafting Pouch
   kills: {}
@@ -673,7 +677,7 @@ export const ROGUELIKE_PERKS = [
     id: 'vampiric_bite',
     name: '🦇 鮮血汲取（吸血鬼之力）',
     icon: '🦇',
-    desc: '普攻與所有技能命中時，自動回復造成傷害 8% 的生命值（可無限疊加）。'
+    desc: '普攻與所有技能命中時，自動回復造成傷害 8% 的生命值（最高 Lv.5）。'
   },
   {
     id: 'berserker_might',
@@ -1433,12 +1437,13 @@ export function computePlayerStats(state) {
   const perks = state.perks || {};
   const scrolls = state.scrolls || [];
 
-  const hullRanks = perks.dragonblood_hull || 0;
-  const mightRanks = perks.berserker_might || 0;
-  const hasteRanks = perks.arcane_haste || 0;
-  const windRanks = perks.wind_stride || 0;
-  const vampRanks = perks.vampiric_bite || 0;
-  const greedRanks = perks.golden_greed || 0;
+  const capRank = (k) => Math.min(MAX_PERK_LEVEL, Math.max(0, perks[k] || 0));
+  const hullRanks = capRank('dragonblood_hull');
+  const mightRanks = capRank('berserker_might');
+  const hasteRanks = capRank('arcane_haste');
+  const windRanks = capRank('wind_stride');
+  const vampRanks = capRank('vampiric_bite');
+  const greedRanks = capRank('golden_greed');
 
   const hasSovngarde = scrolls.includes('scroll_sovngarde');
   const hasBloodmoon = scrolls.includes('scroll_bloodmoon');

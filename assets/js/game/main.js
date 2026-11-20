@@ -903,6 +903,9 @@ function initGame() {
     const maxHp = mob.maxHp || mob.def.maxHp;
     const lvl = mob.level || mob.def.level;
     mob.hp = Math.max(0, mob.hp - dmg);
+    // Track aggro/threat toward whoever hit this mob (Host OR Remote Teammate!)
+    mob.lastAttackerUid = fromRemoteUid || net.uid;
+    mob.aggroMemoryTimer = 5.0;
     mob.visual.hpBar.redraw(`${mob.def.name} Lv.${lvl}`, mob.hp / maxHp);
     spawnFloatingText(mob.visual.group.position, isCrit ? `💥 ${dmg}!` : `${dmg}`, color, isCrit);
 
@@ -2281,6 +2284,20 @@ function initGame() {
         updateHud();
         return;
       }
+      if (hit.type === 'mob') {
+        // Authoritative monster hit routed from Host when monster aggros or AoE-hits this teammate!
+        if (isDead || isInSafeZone(playerRoot.position)) return;
+        takePlayerDamage(hit.dmg || 15, hit.fromName || '魔物', {
+          infect: !!hit.infect,
+          hellfire: !!hit.hellfire,
+          petrify: !!hit.petrify
+        });
+        if (hit.knockX || hit.knockZ) {
+          playerRoot.position.x += (hit.knockX || 0);
+          playerRoot.position.z += (hit.knockZ || 0);
+        }
+        return;
+      }
       if (hit.type === 'pvp') {
         // Double-check safe zone & party friendly-fire protection locally
         if (isInSafeZone(playerRoot.position)) return;
@@ -2319,6 +2336,10 @@ function initGame() {
         vfx.spawnDragonShout(origin, dir, fx.range || 15);
       } else if (fx.type === 'frost') {
         vfx.spawnFrostNova(origin, fx.radius || 7.0);
+      } else if (fx.type === 'breath') {
+        vfx.spawnDragonBreathWarning(origin, fx.radius || 7.6, fx.delay || 1.08, () => {});
+      } else if (fx.type === 'bomb') {
+        vfx.spawnBombProjectile(origin, new THREE.Vector3(fx.tx || 0, 0, fx.tz || 0), () => {});
       }
     },
     onMobsSync(mobsMap) {
@@ -2327,11 +2348,15 @@ function initGame() {
         if (!synced) return;
         mob.alive = !!synced.alive;
         mob.hp = synced.hp != null ? synced.hp : mob.hp;
+        if (synced.maxHp) mob.maxHp = synced.maxHp;
+        if (synced.lvl) mob.level = synced.lvl;
         mob.visual.group.visible = mob.alive;
         if (mob.alive) {
           mob.syncTargetPos = new THREE.Vector3(synced.x, 0, synced.z);
           mob.syncTargetRotY = synced.rotY || 0;
-          mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
+          const mHp = mob.maxHp || mob.def.maxHp;
+          const mLvl = mob.level || mob.def.level;
+          mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mLvl}`, mob.hp / mHp);
         }
       });
     },
@@ -2789,9 +2814,82 @@ function initGame() {
       avatar.model.animate(dt, isRmMoving, avatar.attackAnim, 0, !!(avatar.data && avatar.data.shield));
     });
 
-    // Monster AI Loop (Host runs authoritative AI with Dynamic Level Scaling)
+    // --- Multi-Player Monster Aggro, Threat & Combat Helpers ---
+    function getLivingWorldTargets() {
+      const list = [];
+      if (!isDead && !isInSafeZone(playerRoot.position)) {
+        list.push({ isLocal: true, uid: net.uid, pos: playerRoot.position, name: playerNickname });
+      }
+      remoteAvatars.forEach((avatar, rUid) => {
+        if (!avatar || !avatar.data) return;
+        if ((avatar.data.hp || 0) <= 0) return;
+        if (isInSafeZone(avatar.root.position)) return;
+        list.push({ isLocal: false, uid: rUid, pos: avatar.root.position, name: avatar.data.name || '冒險者' });
+      });
+      return list;
+    }
+
+    function pickMobTarget(mob, targets) {
+      const pos = mob.visual.group.position;
+      let bestTarget = null;
+      let bestScore = Infinity;
+      let bestDist = Infinity;
+
+      for (const t of targets) {
+        const dist = pos.distanceTo(t.pos);
+        const isLastAttacker = mob.aggroMemoryTimer > 0 && mob.lastAttackerUid && t.uid === mob.lastAttackerUid;
+        const effectiveAggro = mob.def.aggroRange + (isLastAttacker ? 10 : 0);
+        if (dist > effectiveAggro) continue;
+        // Threat preference (-4.5m) for whichever player (Host or Teammate) actively attacked the mob!
+        const score = dist - (isLastAttacker ? 4.5 : 0);
+        if (score < bestScore) {
+          bestScore = score;
+          bestTarget = t;
+          bestDist = dist;
+        }
+      }
+      return bestTarget ? { target: bestTarget, dist: bestDist } : null;
+    }
+
+    function damagePlayerTarget(target, rawDmg, mobName, opts = null, knockVec = null) {
+      if (!target) return;
+      if (target.isLocal) {
+        takePlayerDamage(rawDmg, mobName, opts);
+        if (knockVec && !isDead && dodgeAnim <= 0 && !isInSafeZone(playerRoot.position)) {
+          playerRoot.position.add(knockVec);
+        }
+      } else {
+        net.sendPlayerHit(target.uid, {
+          type: 'mob',
+          fromName: mobName,
+          dmg: Math.max(1, Math.round(rawDmg)),
+          infect: !!(opts && opts.infect),
+          hellfire: !!(opts && opts.hellfire),
+          petrify: !!(opts && opts.petrify),
+          knockX: knockVec ? knockVec.x : 0,
+          knockZ: knockVec ? knockVec.z : 0
+        });
+      }
+    }
+
+    function damageAllTargetsInRadius(centerPos, radius, rawDmg, mobName, opts = null, knockFromPos = null, knockDist = 0) {
+      const targets = getLivingWorldTargets();
+      targets.forEach((t) => {
+        if (t.pos.distanceTo(centerPos) <= radius) {
+          let kb = null;
+          if (knockFromPos && knockDist > 0) {
+            const dir = new THREE.Vector3().subVectors(t.pos, knockFromPos);
+            dir.y = 0;
+            if (dir.lengthSq() > 0.001) kb = dir.normalize().multiplyScalar(knockDist);
+          }
+          damagePlayerTarget(t, rawDmg, mobName, opts, kb);
+        }
+      });
+    }
+
+    // Monster AI Loop (Host runs authoritative AI targeting ALL online players & teammates!)
     const runLocalMobAi = !net.isConnected() || net.isHost();
-    const playerInSafe = isInSafeZone(playerRoot.position);
+    const livingTargets = runLocalMobAi ? getLivingWorldTargets() : [];
     mobs.forEach((mob) => {
       if (!runLocalMobAi) {
         if (mob.alive && mob.syncTargetPos) {
@@ -2810,6 +2908,8 @@ function initGame() {
           mob.burnTimer = 0;
           mob.slowTimer = 0;
           mob.dashBoostTimer = 0;
+          mob.lastAttackerUid = null;
+          mob.aggroMemoryTimer = 0;
           mob.visual.group.position.copy(mob.home);
           mob.visual.group.visible = true;
           applyScaledStatsToMob(mob, true);
@@ -2840,6 +2940,7 @@ function initGame() {
       }
       if (mob.slowTimer > 0) mob.slowTimer -= dt;
       if (mob.dashBoostTimer > 0) mob.dashBoostTimer -= dt;
+      if (mob.aggroMemoryTimer > 0) mob.aggroMemoryTimer = Math.max(0, mob.aggroMemoryTimer - dt);
 
       // Knockback velocity decay
       if (mob.knockVel.lengthSq() > 0.05) {
@@ -2848,25 +2949,27 @@ function initGame() {
       }
 
       const pos = mob.visual.group.position;
-      const distToPlayer = pos.distanceTo(playerRoot.position);
       const distToHome = pos.distanceTo(mob.home);
+      const picked = distToHome < 58 ? pickMobTarget(mob, livingTargets) : null;
       let moving = false;
       let attacking = false;
 
       // Enrage below 55% HP for berserker bosses/elites
       const isEnraged = (mob.def.enrage || mob.type === 'cerberus') && mob.hp < mobMaxHp * 0.55;
 
-      if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 58) {
-        // Face player
-        const toPlayer = new THREE.Vector3().subVectors(playerRoot.position, pos);
-        toPlayer.y = 0;
-        const dirToPlayer = toPlayer.clone().normalize();
-        mob.visual.group.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+      if (picked) {
+        const target = picked.target;
+        const distToTarget = picked.dist;
+        // Face chosen target (Host OR Teammate!)
+        const toTarget = new THREE.Vector3().subVectors(target.pos, pos);
+        toTarget.y = 0;
+        const dirToTarget = toTarget.lengthSq() > 0.0001 ? toTarget.clone().normalize() : new THREE.Vector3(0, 0, 1);
+        mob.visual.group.rotation.y = Math.atan2(toTarget.x, toTarget.z);
 
         // 1. Dash Charge Skill (Minotaur / Orc / Shuten-Doji / Jaguar Warrior)
         if (mob.def.chargeCooldown) {
           mob.chargeTimer -= dt;
-          if (mob.chargeTimer <= 0 && distToPlayer >= 3.2 && distToPlayer <= 18) {
+          if (mob.chargeTimer <= 0 && distToTarget >= 3.2 && distToTarget <= 18) {
             mob.chargeTimer = mob.def.chargeCooldown;
             mob.dashBoostTimer = 0.95;
             const callout = mob.type === 'minotaur'
@@ -2877,18 +2980,21 @@ function initGame() {
                   ? '🐆 美洲豹撲殺!'
                   : '🪓 狂暴躍擊!';
             spawnFloatingText(pos, callout, '#fb923c', true);
-            vfx.spawnEarthSpikes(pos, dirToPlayer, 4.8);
+            vfx.spawnEarthSpikes(pos, dirToTarget, 4.8);
+            net.broadcastFx({ type: 'earth', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 4.8 });
           }
         }
 
         // 2. Sonic / Madness / Gale Shout (Draugr / Cthulhu / Tengu / Storm Dragon)
         if (mob.def.shoutCooldown) {
           mob.shoutTimer -= dt;
-          if (mob.shoutTimer <= 0 && distToPlayer <= 15) {
+          if (mob.shoutTimer <= 0 && distToTarget <= 15) {
             mob.shoutTimer = mob.def.shoutCooldown;
-            vfx.spawnDragonShout(pos, dirToPlayer, 13.5);
+            vfx.spawnDragonShout(pos, dirToTarget, 13.5);
+            net.broadcastFx({ type: 'shout', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 13.5 });
             if (mob.type === 'storm_dragon') {
-              vfx.spawnLightning(playerRoot.position.clone(), []);
+              vfx.spawnLightning(target.pos.clone(), []);
+              net.broadcastFx({ type: 'lightning', x: target.pos.x, z: target.pos.z, chains: [] });
             }
             const shoutTxt = mob.type === 'cthulhu'
               ? '🐙 舊日瘋狂低語!'
@@ -2898,32 +3004,33 @@ function initGame() {
                   ? '⚡ 蒼穹天雷咆哮!'
                   : '🗣️ FUS RO DAH!';
             spawnFloatingText(pos, shoutTxt, '#38bdf8', true);
-            if (distToPlayer <= 13.5) {
-              takePlayerDamage(mobAtk * 1.25, mob.def.name, {
-                infect: !!mob.def.infect,
-                petrify: !!mob.def.petrify
-              });
-              playerRoot.position.addScaledVector(dirToPlayer, 4.8);
-            }
+            damageAllTargetsInRadius(
+              pos,
+              13.5,
+              mobAtk * 1.25,
+              mob.def.name,
+              { infect: !!mob.def.infect, petrify: !!mob.def.petrify },
+              pos,
+              4.8
+            );
           }
         }
 
         // 3. Exploding Boulder / Ink Bomb Throw (Cyclops / Yeti / Kraken)
         if (mob.def.boulderCooldown) {
           mob.boulderTimer -= dt;
-          if (mob.boulderTimer <= 0 && distToPlayer >= 4.0 && distToPlayer <= 19) {
+          if (mob.boulderTimer <= 0 && distToTarget >= 4.0 && distToTarget <= 19) {
             mob.boulderTimer = mob.def.boulderCooldown;
-            const targetSpot = playerRoot.position.clone();
+            const targetSpot = target.pos.clone();
             const throwTxt = mob.type === 'kraken' ? '🦑 深海墨彈!' : mob.type === 'yeti' ? '❄️ 冰岩投擲!' : '🪨 巨岩投擲!';
             spawnFloatingText(pos, throwTxt, '#facc15', true);
+            net.broadcastFx({ type: 'bomb', x: pos.x, z: pos.z, tx: targetSpot.x, tz: targetSpot.z });
             vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
-              vfx.spawnEarthSpikes(hitPos, dirToPlayer, 3.8);
-              if (!isDead && playerRoot.position.distanceTo(hitPos) <= 4.2) {
-                takePlayerDamage(mobAtk * 1.35, mob.def.name, {
-                  infect: !!mob.def.infect,
-                  petrify: mob.type === 'yeti'
-                });
-              }
+              vfx.spawnEarthSpikes(hitPos, dirToTarget, 3.8);
+              damageAllTargetsInRadius(hitPos, 4.2, mobAtk * 1.35, mob.def.name, {
+                infect: !!mob.def.infect,
+                petrify: mob.type === 'yeti'
+              });
             });
           }
         }
@@ -2931,34 +3038,31 @@ function initGame() {
         // 4. Mythic Breath / Solar Flare / Eldritch Cataclysm Telegraph!
         if (mob.def.breathCooldown) {
           mob.breathTimer -= dt;
-          if (mob.breathTimer <= 0 && distToPlayer <= 22) {
+          if (mob.breathTimer <= 0 && distToTarget <= 22) {
             mob.breathTimer = mob.def.breathCooldown;
-            const targetSpot = playerRoot.position.clone();
+            const targetSpot = target.pos.clone();
+            net.broadcastFx({ type: 'breath', x: targetSpot.x, z: targetSpot.z, radius: 7.6, delay: 1.08 });
             vfx.spawnDragonBreathWarning(targetSpot, 7.6, 1.08, (blastPos) => {
               if (mob.type === 'frost_wyrm' || mob.type === 'leviathan') {
                 vfx.spawnFrostNova(blastPos, 7.2);
+                net.broadcastFx({ type: 'frost', x: blastPos.x, z: blastPos.z, radius: 7.2 });
               } else if (mob.type === 'storm_dragon') {
                 vfx.spawnLightning(blastPos, []);
+                net.broadcastFx({ type: 'lightning', x: blastPos.x, z: blastPos.z, chains: [] });
               }
-              if (!isDead && playerRoot.position.distanceTo(blastPos) <= 7.6) {
-                takePlayerDamage(
-                  mobAtk * 1.65,
-                  mob.def.name,
-                  {
-                    infect: !!mob.def.infect,
-                    hellfire: !!mob.def.hellfire,
-                    petrify: !!mob.def.petrify
-                  }
-                );
-              }
+              damageAllTargetsInRadius(blastPos, 7.6, mobAtk * 1.65, mob.def.name, {
+                infect: !!mob.def.infect,
+                hellfire: !!mob.def.hellfire,
+                petrify: !!mob.def.petrify
+              });
             });
           }
         }
 
-        if (distToPlayer > mob.def.attackRange) {
+        if (distToTarget > mob.def.attackRange) {
           const dashMult = mob.dashBoostTimer > 0 ? 2.25 : 1.0;
           const spd = mob.def.speed * dashMult * (isEnraged ? 1.38 : 1.0) * (mob.slowTimer > 0 ? 0.45 : 1.0);
-          const nextPos = pos.clone().addScaledVector(dirToPlayer, spd * dt);
+          const nextPos = pos.clone().addScaledVector(dirToTarget, spd * dt);
           // Monsters never enter Elf Village safe zone
           if (!isInSafeZone(nextPos)) {
             pos.copy(nextPos);
@@ -2972,44 +3076,43 @@ function initGame() {
             const rawAtk = mobAtk * (isEnraged ? 1.35 : 1.0);
 
             if (mob.type === 'gnome') {
-              const targetSpot = playerRoot.position.clone();
+              const targetSpot = target.pos.clone();
+              net.broadcastFx({ type: 'bomb', x: pos.x, z: pos.z, tx: targetSpot.x, tz: targetSpot.z });
               vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
-                if (!isDead && playerRoot.position.distanceTo(hitPos) <= 3.4) {
-                  takePlayerDamage(rawAtk, mob.def.name);
-                }
+                damageAllTargetsInRadius(hitPos, 3.4, rawAtk, mob.def.name);
               });
             } else if (mob.type === 'centaur' || mob.type === 'kyubi') {
               // Ranged arrow / Nine-Tail Foxfire bolt
+              net.broadcastFx({ type: 'fire', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 14 });
               vfx.spawnFireball(
                 pos,
-                dirToPlayer,
+                dirToTarget,
                 14,
-                (projPos) => !isDead && playerRoot.position.distanceTo(projPos) <= 1.7,
+                (projPos) => getLivingWorldTargets().some((t) => t.pos.distanceTo(projPos) <= 1.7),
                 (hitPos) => {
-                  if (!isDead && playerRoot.position.distanceTo(hitPos) <= 2.8) {
-                    takePlayerDamage(rawAtk, mob.def.name, {
-                      hellfire: mob.type === 'kyubi',
-                      petrify: mob.type === 'kyubi'
-                    });
-                  }
+                  damageAllTargetsInRadius(hitPos, 2.8, rawAtk, mob.def.name, {
+                    hellfire: mob.type === 'kyubi',
+                    petrify: mob.type === 'kyubi'
+                  });
                 }
               );
             } else if (mob.type === 'medusa' || mob.type === 'cthulhu') {
-              vfx.spawnDragonShout(pos, dirToPlayer, 9.8);
-              vfx.spawnPoisonCloud(playerRoot.position);
-              takePlayerDamage(rawAtk, mob.def.name, { infect: true, petrify: true });
+              vfx.spawnDragonShout(pos, dirToTarget, 9.8);
+              net.broadcastFx({ type: 'shout', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 9.8 });
+              vfx.spawnPoisonCloud(target.pos);
+              damagePlayerTarget(target, rawAtk, mob.def.name, { infect: true, petrify: true });
             } else if (mob.type === 'vampire') {
-              takePlayerDamage(rawAtk, mob.def.name);
+              damagePlayerTarget(target, rawAtk, mob.def.name);
               const drainHeal = Math.round(rawAtk * (mob.def.lifesteal || 0.75));
               mob.hp = Math.min(mobMaxHp, mob.hp + drainHeal);
               mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mobLvl}`, mob.hp / mobMaxHp);
               spawnFloatingText(pos, `🦇 +${drainHeal}`, '#f43f5e', false);
             } else if (mob.def.stomp) {
-              vfx.spawnEarthSpikes(pos, dirToPlayer, 5.4);
-              takePlayerDamage(rawAtk, mob.def.name, { infect: !!mob.def.infect });
-              playerRoot.position.addScaledVector(dirToPlayer, 3.0);
+              vfx.spawnEarthSpikes(pos, dirToTarget, 5.4);
+              net.broadcastFx({ type: 'earth', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 5.4 });
+              damagePlayerTarget(target, rawAtk, mob.def.name, { infect: !!mob.def.infect }, dirToTarget.clone().multiplyScalar(3.0));
             } else {
-              takePlayerDamage(rawAtk, mob.def.name, {
+              damagePlayerTarget(target, rawAtk, mob.def.name, {
                 infect: !!mob.def.infect,
                 hellfire: !!mob.def.hellfire,
                 petrify: !!mob.def.petrify
@@ -3060,6 +3163,8 @@ function initGame() {
           mobsMap[m.id] = {
             alive: m.alive ? 1 : 0,
             hp: Math.round(m.hp),
+            maxHp: Math.round(m.maxHp || m.def.maxHp),
+            lvl: m.level || m.def.level,
             x: Number(m.visual.group.position.x.toFixed(2)),
             z: Number(m.visual.group.position.z.toFixed(2)),
             rotY: Number(m.visual.group.rotation.y.toFixed(2))

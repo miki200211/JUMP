@@ -23,11 +23,14 @@ const CONFIG = {
   ONESIGNAL_APP_ID: 'YOUR_ONESIGNAL_APP_ID',
 
   // Firebase Realtime Database config for 3D RPG real-time multiplayer, party & PvP.
-  // Fill in databaseURL (and apiKey/projectId) from Firebase Console -> Realtime Database to enable multiplayer.
+  // Fill in databaseURL from Firebase Console -> Realtime Database to enable multiplayer.
   FIREBASE_CONFIG: {
-    apiKey: '',
-    authDomain: '',
-    databaseURL: '',
-    projectId: ''
+    apiKey: 'AIzaSyBgbD5whefIYtTpBiJ82uksRt3yr5WO-j8',
+    authDomain: 'jump-ff376.firebaseapp.com',
+    databaseURL: 'https://jump-ff376-default-rtdb.asia-southeast1.firebasedatabase.app',
+    projectId: 'jump-ff376',
+    storageBucket: 'jump-ff376.firebasestorage.app',
+    messagingSenderId: '332230016463',
+    appId: '1:332230016463:web:944f68108930f6a30e66ba'
   }
 };

@@ -927,6 +927,25 @@ function initGame() {
     });
   });
 
+  function syncNicknameToChat(newName) {
+    if (!newName) return;
+    window.dispatchEvent(new CustomEvent('jump:nickname-sync', {
+      detail: { nickname: newName, source: 'rpg' }
+    }));
+  }
+
+  // Listen when user edits nickname in the left chatroom -> sync to 3D avatar & cloud save
+  window.addEventListener('jump:nickname-sync', (e) => {
+    const detail = e && e.detail;
+    if (!detail || detail.source !== 'chat' || !detail.nickname) return;
+    if (playerNickname === detail.nickname) return;
+    playerNickname = detail.nickname;
+    rebuildPlayerMesh();
+    updateHud();
+    if (net.isConnected()) net.pushPlayerState(buildMyNetworkSnapshot(), true);
+    if (accountUser) triggerAutoSave();
+  });
+
   if (hudAuthBtn) {
     hudAuthBtn.addEventListener('click', () => {
       if (accountUser) {
@@ -939,6 +958,10 @@ function initGame() {
         }
       } else if (authDialog) {
         if (authErrorEl) authErrorEl.textContent = '';
+        const nickInput = document.getElementById('rpg-auth-nickname');
+        if (nickInput && !nickInput.value) {
+          nickInput.value = localStorage.getItem('chat_nickname') || playerNickname || '';
+        }
         authDialog.showModal();
       }
     });
@@ -952,7 +975,7 @@ function initGame() {
       e.preventDefault();
       const username = document.getElementById('rpg-auth-username').value.trim();
       const password = document.getElementById('rpg-auth-password').value;
-      const nick = (document.getElementById('rpg-auth-nickname').value || username).trim();
+      const nick = (document.getElementById('rpg-auth-nickname').value || localStorage.getItem('chat_nickname') || username).trim();
 
       if (authErrorEl) authErrorEl.textContent = '連線驗證中…';
       if (authSubmitBtn) authSubmitBtn.disabled = true;
@@ -976,10 +999,12 @@ function initGame() {
         currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
         currentMp = Math.min(state.mp || stats.maxMp, stats.maxMp);
 
+        syncNicknameToChat(playerNickname);
         rebuildPlayerMesh();
         updateHud();
+        if (net.isConnected()) net.pushPlayerState(buildMyNetworkSnapshot(), true);
         authDialog.close();
-        showToast(`✨ 歡迎回來，${playerNickname}！已載入雲端角色存檔`, 'success');
+        showToast(`✨ 歡迎回來，${playerNickname}！聊天室與遊戲名稱已同步`, 'success');
       } else {
         const msg = (res && res.error && res.error.message) || '驗證失敗，請確認帳密或後端是否已部署最新版。';
         if (authErrorEl) authErrorEl.textContent = msg;
@@ -1608,8 +1633,10 @@ function initGame() {
       stats = computePlayerStats(state);
       currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
       currentMp = Math.min(state.mp || stats.maxMp, stats.maxMp);
+      syncNicknameToChat(playerNickname);
       rebuildPlayerMesh();
       updateHud();
+      if (net.isConnected()) net.pushPlayerState(buildMyNetworkSnapshot(), true);
     } else {
       const saved = loadSavedSession();
       if (saved && saved.username) accountUser = saved.username;

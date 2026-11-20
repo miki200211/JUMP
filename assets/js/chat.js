@@ -513,13 +513,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ==================== Nickname (Modern Native <dialog>) ====================
 
-  function setNickname(newNick) {
+  function setNickname(newNick, fromSync = false) {
     nickname = newNick.trim();
     localStorage.setItem('chat_nickname', nickname);
     if (nicknameDisplay) {
       nicknameDisplay.textContent = nickname;
     }
+    if (!fromSync && nickname) {
+      window.dispatchEvent(new CustomEvent('jump:nickname-sync', {
+        detail: { nickname: nickname, source: 'chat' }
+      }));
+    }
   }
+
+  // Sync nickname automatically when user logs in / registers an RPG account
+  window.addEventListener('jump:nickname-sync', (e) => {
+    const detail = e && e.detail;
+    if (!detail || detail.source !== 'rpg' || !detail.nickname) return;
+    setNickname(detail.nickname, true);
+    hideNicknameModal();
+    if (!pollTimeoutId) {
+      startPolling();
+    }
+  });
 
   function showNicknameModal(canClose = true) {
     if (!nicknameModal) return;

@@ -43,9 +43,56 @@ function initGame() {
   const canvasHost = document.getElementById('game-canvas-host');
   if (!stageEl || !canvasHost) return;
 
-  // --- Layout Split & Mobile Tabs ---
+  // --- Layout Split, Resizable Divider & Mobile Tabs ---
   const toggleChatBtn = document.getElementById('toggle-chat-btn');
   const workspaceSplit = document.getElementById('workspace-split');
+  const chatPaneEl = document.querySelector('.chat-pane');
+  const paneResizer = document.getElementById('pane-resizer');
+  const SAVED_WIDTH_KEY = 'jump_chat_pane_width';
+
+  if (chatPaneEl) {
+    const savedW = parseInt(localStorage.getItem(SAVED_WIDTH_KEY), 10);
+    if (savedW && savedW >= 260 && savedW <= window.innerWidth * 0.72) {
+      chatPaneEl.style.width = `${savedW}px`;
+    }
+  }
+
+  if (paneResizer && chatPaneEl && workspaceSplit) {
+    let resizing = false;
+
+    const onPointerMove = (e) => {
+      if (!resizing) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const minW = 260;
+      const maxW = Math.max(360, Math.floor(window.innerWidth * 0.72));
+      const newW = Math.max(minW, Math.min(maxW, Math.round(clientX)));
+      chatPaneEl.style.width = `${newW}px`;
+      handleResize();
+    };
+
+    const onPointerUp = () => {
+      if (!resizing) return;
+      resizing = false;
+      workspaceSplit.classList.remove('is-resizing');
+      const curW = Math.round(chatPaneEl.getBoundingClientRect().width);
+      if (curW >= 260) localStorage.setItem(SAVED_WIDTH_KEY, String(curW));
+      handleResize();
+    };
+
+    paneResizer.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      resizing = true;
+      workspaceSplit.classList.add('is-resizing');
+    });
+    paneResizer.addEventListener('dblclick', () => {
+      chatPaneEl.style.width = '390px';
+      localStorage.setItem(SAVED_WIDTH_KEY, '390');
+      setTimeout(handleResize, 200);
+    });
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+  }
+
   if (toggleChatBtn && workspaceSplit) {
     toggleChatBtn.addEventListener('click', () => {
       workspaceSplit.classList.toggle('chat-collapsed');
@@ -786,7 +833,7 @@ function initGame() {
 
   // --- HUD & Minimap Update ---
   function updateHud() {
-    if (hudName) hudName.textContent = accountUser ? `${playerNickname} (@${accountUser})` : `${playerNickname} (訪客)`;
+    if (hudName) hudName.textContent = accountUser ? `${playerNickname} (@${accountUser})` : '尚未登入';
     if (hudLevel) hudLevel.textContent = `Lv.${state.level}`;
     if (hudGold) hudGold.textContent = `${state.gold} G`;
 
@@ -946,29 +993,45 @@ function initGame() {
     if (accountUser) triggerAutoSave();
   });
 
+  const authCloseBtn = document.getElementById('rpg-auth-close');
+
+  function openMandatoryLogin() {
+    if (!authDialog) return;
+    if (authErrorEl) authErrorEl.textContent = '';
+    if (authCloseBtn) authCloseBtn.style.display = accountUser ? 'block' : 'none';
+    const nickInput = document.getElementById('rpg-auth-nickname');
+    if (nickInput && !nickInput.value) {
+      nickInput.value = localStorage.getItem('chat_nickname') || '';
+    }
+    if (!authDialog.open) authDialog.showModal();
+  }
+
+  // Prevent ESC closing auth dialog when not logged in (no guests allowed)
+  if (authDialog) {
+    authDialog.addEventListener('cancel', (e) => {
+      if (!accountUser) e.preventDefault();
+    });
+  }
+  window.addEventListener('jump:require-login', openMandatoryLogin);
+
   if (hudAuthBtn) {
     hudAuthBtn.addEventListener('click', () => {
       if (accountUser) {
         if (confirm(`確定要登出帳號 @${accountUser} 嗎？`)) {
           saveSession(null);
-          accountUser = null;
-          rebuildPlayerMesh();
-          updateHud();
-          showToast('已登出帳號（切換為訪客模式）', 'info');
+          location.reload();
         }
-      } else if (authDialog) {
-        if (authErrorEl) authErrorEl.textContent = '';
-        const nickInput = document.getElementById('rpg-auth-nickname');
-        if (nickInput && !nickInput.value) {
-          nickInput.value = localStorage.getItem('chat_nickname') || playerNickname || '';
-        }
-        authDialog.showModal();
+      } else {
+        openMandatoryLogin();
       }
     });
   }
 
-  const authCloseBtn = document.getElementById('rpg-auth-close');
-  if (authCloseBtn && authDialog) authCloseBtn.addEventListener('click', () => authDialog.close());
+  if (authCloseBtn && authDialog) {
+    authCloseBtn.addEventListener('click', () => {
+      if (accountUser) authDialog.close();
+    });
+  }
 
   if (authForm) {
     authForm.addEventListener('submit', async (e) => {
@@ -1002,7 +1065,11 @@ function initGame() {
         syncNicknameToChat(playerNickname);
         rebuildPlayerMesh();
         updateHud();
-        if (net.isConnected()) net.pushPlayerState(buildMyNetworkSnapshot(), true);
+        if (!net.isConnected()) {
+          net.connect(buildMyNetworkSnapshot());
+        } else {
+          net.pushPlayerState(buildMyNetworkSnapshot(), true);
+        }
         authDialog.close();
         showToast(`✨ 歡迎回來，${playerNickname}！聊天室與遊戲名稱已同步`, 'success');
       } else {
@@ -1604,9 +1671,6 @@ function initGame() {
     });
   }
 
-  // Connect to Firebase Realtime Database if configured
-  net.connect(buildMyNetworkSnapshot());
-
   // --- Resize Handling ---
   function handleResize() {
     const w = Math.max(200, canvasHost.clientWidth);
@@ -1618,7 +1682,7 @@ function initGame() {
   window.addEventListener('resize', handleResize);
   handleResize();
 
-  // --- Auto-Login on Boot ---
+  // --- Mandatory Auto-Login on Boot (No Guests Allowed) ---
   (async () => {
     const restored = await autoLoginFromSession();
     if (restored) {
@@ -1636,11 +1700,12 @@ function initGame() {
       syncNicknameToChat(playerNickname);
       rebuildPlayerMesh();
       updateHud();
-      if (net.isConnected()) net.pushPlayerState(buildMyNetworkSnapshot(), true);
+      net.connect(buildMyNetworkSnapshot());
     } else {
-      const saved = loadSavedSession();
-      if (saved && saved.username) accountUser = saved.username;
+      saveSession(null);
+      accountUser = null;
       updateHud();
+      openMandatoryLogin();
     }
   })();
 

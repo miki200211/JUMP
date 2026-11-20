@@ -9,7 +9,7 @@
 
   <!-- Styling -->
   <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
-  <link rel="stylesheet" href="assets/css/game.css?v=3.1.0">
+  <link rel="stylesheet" href="assets/css/game.css?v=3.3.0">
 
   <!-- Three.js ES Module Import Map -->
   <script type="importmap">
@@ -111,6 +111,9 @@
       </div>
     </div>
 
+    <!-- Resizable Splitter between Chatroom and 3D Game -->
+    <div class="pane-resizer" id="pane-resizer" title="左右拖曳調整視窗大小" role="separator" aria-orientation="vertical"></div>
+
     <!-- ==================== Right Pane: 3D Fantasy RPG ==================== -->
     <section class="game-pane" id="game-stage" aria-label="3D 奇幻對打冒險">
       <div id="game-canvas-host"></div>
@@ -121,7 +124,7 @@
         <div class="rpg-status-card">
           <div class="rpg-status-header">
             <span class="rpg-level-pill" id="rpg-player-level">Lv.1</span>
-            <span id="rpg-player-name">冒險者 (訪客)</span>
+            <span id="rpg-player-name">尚未登入</span>
             <span id="rpg-player-gold">120 G</span>
           </div>
           <div class="rpg-bar-row">
@@ -271,8 +274,8 @@
   <dialog class="modal-dialog" id="rpg-auth-dialog" aria-label="RPG 帳號登入與註冊">
     <div class="rpg-dialog-card">
       <button type="button" class="modal-close-x" id="rpg-auth-close" aria-label="關閉">&times;</button>
-      <h2>⚔️ 冒險者帳號</h2>
-      <p class="rpg-dialog-sub">登入後可永久雲端保存您的 3D 捏角外觀、等級、金幣與武器裝備。</p>
+      <h2>⚔️ 冒險者帳號登入</h2>
+      <p class="rpg-dialog-sub">本聊天室與 3D 奇幻冒險採會員制，請先登入或註冊帳號（名稱將同步至聊天室與遊戲角色）。</p>
 
       <div class="rpg-tab-row">
         <button type="button" class="rpg-tab-btn rpg-auth-tab active" data-mode="login">登入帳號</button>
@@ -390,9 +393,9 @@
   <script src="assets/js/config.js?v=3.2.0"></script>
   <script src="assets/js/emoji.js?v=2.0.0"></script>
   <script src="assets/js/api.js?v=2.2.0"></script>
-  <script src="assets/js/chat.js?v=3.2.1"></script>
+  <script src="assets/js/chat.js?v=3.3.0"></script>
 
   <!-- 3D Fantasy RPG ES Module Entry -->
-  <script type="module" src="assets/js/game/main.js?v=3.2.1"></script>
+  <script type="module" src="assets/js/game/main.js?v=3.3.0"></script>
 </body>
 </html>

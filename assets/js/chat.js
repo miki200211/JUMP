@@ -580,6 +580,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function requireNickname() {
+    if (!localStorage.getItem('jump_rpg_auth_v1')) {
+      window.dispatchEvent(new CustomEvent('jump:require-login'));
+      return false;
+    }
     if (!nickname) {
       showNicknameModal(false);
       return false;
@@ -612,11 +616,11 @@ document.addEventListener('DOMContentLoaded', () => {
     nicknameCloseBtn.addEventListener('click', hideNicknameModal);
   }
 
-  // Prompt nickname on startup if not set
-  if (!nickname) {
-    showNicknameModal(false);
-  } else {
-    setNickname(nickname);
+  // Display nickname if already cached; mandatory login dialog handles unauthenticated users
+  if (nickname) {
+    setNickname(nickname, true);
+  } else if (nicknameDisplay) {
+    nicknameDisplay.textContent = '請先登入';
   }
 
   // ==================== Sending (Sequential Queue Architecture) ====================

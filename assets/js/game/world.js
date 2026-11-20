@@ -7,14 +7,14 @@
  * - Dragon Volcano Lair (Obsidian Spires + Elder Scrolls Word Wall)
  */
 import * as THREE from 'three';
-import { ZONES } from './data.js';
+import { ZONES } from './data.js?v=4.3.0';
 import {
   createElfMerchantModel,
   createBlacksmithNpcModel,
   createAlchemistNpcModel,
   createGuideNpcModel,
   createTreasureChestModel
-} from './models.js';
+} from './models.js?v=4.3.0';
 
 function createPainterlyGroundTexture() {
   const canvas = document.createElement('canvas');

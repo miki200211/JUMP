@@ -19,14 +19,14 @@ import {
   getScaledMobStats,
   expForNextLevel,
   computePlayerStats
-} from './data.js';
+} from './data.js?v=4.3.0';
 import {
   createCharacterModel,
   createMobModelByType,
   createNameplateSprite
-} from './models.js';
-import { buildWorld } from './world.js';
-import { createVfxManager } from './vfx.js';
+} from './models.js?v=4.3.0';
+import { buildWorld } from './world.js?v=4.3.0';
+import { createVfxManager } from './vfx.js?v=4.3.0';
 import {
   enforceClientDataEpoch,
   loadSavedSession,
@@ -36,8 +36,8 @@ import {
   loginAccount,
   autoLoginFromSession,
   cloudSaveProgress
-} from './auth.js';
-import { createMultiplayerNetwork } from './network.js';
+} from './auth.js?v=4.3.0';
+import { createMultiplayerNetwork } from './network.js?v=4.3.0';
 
 function clone(obj) {
   return JSON.parse(JSON.stringify(obj));
@@ -232,6 +232,8 @@ function initGame() {
   const cooldowns = {
     attack: 0,
     dodge: 0,
+    potion: 0,
+    lifesteal: 0,
     lightning: 0,
     fire: 0,
     water: 0,
@@ -485,11 +487,25 @@ function initGame() {
     setTimeout(() => el.remove(), 950);
   }
 
-  // --- Monster Spawner & Dynamic Player-Level Adaptive Scaling ---
+  // --- Monster Spawner & Dynamic Party-Level + Co-Op Raid Adaptive Scaling ---
   const mobs = [];
+  let lastScalingKey = '';
+
+  function getWorldScalingContext() {
+    let maxLvl = Math.max(1, state.level || 1);
+    let count = 1;
+    remoteAvatars.forEach((avatar) => {
+      if (!avatar || !avatar.data) return;
+      count += 1;
+      const rLvl = Math.max(1, Number(avatar.data.level) || 1);
+      if (rLvl > maxLvl) maxLvl = rLvl;
+    });
+    return { level: maxLvl, activePlayers: Math.min(6, count) };
+  }
 
   function applyScaledStatsToMob(mob, fullHeal = false) {
-    const sc = getScaledMobStats(mob.def, state.level);
+    const ctx = getWorldScalingContext();
+    const sc = getScaledMobStats(mob.def, ctx.level, ctx.activePlayers);
     const prevMax = mob.maxHp || sc.maxHp;
     const ratio = prevMax > 0 ? Math.min(1, mob.hp / prevMax) : 1;
     mob.level = sc.level;
@@ -503,6 +519,8 @@ function initGame() {
   }
 
   function rescaleLivingMobsToPlayerLevel() {
+    const ctx = getWorldScalingContext();
+    lastScalingKey = `${ctx.level}_${ctx.activePlayers}`;
     mobs.forEach((m) => {
       if (m.alive) applyScaledStatsToMob(m, m.hp >= (m.maxHp || m.def.maxHp));
     });
@@ -511,7 +529,8 @@ function initGame() {
   function spawnMob(typeKey, homeX, homeZ) {
     const def = MOB_TYPES[typeKey];
     const visual = createMobModelByType(typeKey);
-    const sc = getScaledMobStats(def, state.level);
+    const ctx = getWorldScalingContext();
+    const sc = getScaledMobStats(def, ctx.level, ctx.activePlayers);
 
     visual.group.position.set(homeX, 0, homeZ);
     scene.add(visual.group);
@@ -530,6 +549,7 @@ function initGame() {
       goldReward: sc.goldReward,
       regen: sc.regen,
       alive: true,
+      hasEnraged: false,
       respawnTimer: 0,
       atkTimer: 0.4 + Math.random() * 0.8,
       breathTimer: def.breathCooldown || 6,
@@ -541,7 +561,11 @@ function initGame() {
       burnTimer: 0,
       burnTick: 0,
       burnDmg: 0,
+      burnOwnerUid: null,
       slowTimer: 0,
+      threatMap: new Map(),
+      currentTargetUid: null,
+      retargetTimer: 3.5 + Math.random() * 2.5,
       knockVel: new THREE.Vector3()
     };
     mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.level}`, 1);
@@ -874,27 +898,29 @@ function initGame() {
     updateHud();
   }
 
-  function applyDamageToMob(mob, rawDmg, color = '#fef08a', isCrit = false, statusEffects = null, fromRemoteUid = null) {
+  function applyDamageToMob(mob, rawDmg, color = '#fef08a', isCrit = false, statusEffects = null, fromRemoteUid = null, lifestealScale = 1.0, isBurnTick = false) {
     if (!mob.alive) return;
     let scaledDmg = rawDmg;
     // Dawnbreaker / Lathander bonus against Undead
-    if (!fromRemoteUid && mob.def.undead && stats.weapon && stats.weapon.undeadSlayer) {
+    if (!fromRemoteUid && !isBurnTick && mob.def.undead && stats.weapon && stats.weapon.undeadSlayer) {
       scaledDmg *= stats.weapon.undeadSlayer;
     }
     // Balduran's Giantslayer / Kusanagi / Fatalis bonus against Bosses & MiniBosses
-    if (!fromRemoteUid && (mob.def.isBoss || mob.def.isMiniBoss) && stats.bossSlayerMult > 1) {
+    if (!fromRemoteUid && !isBurnTick && (mob.def.isBoss || mob.def.isMiniBoss) && stats.bossSlayerMult > 1) {
       scaledDmg *= stats.bossSlayerMult;
     }
     const dmg = Math.max(1, Math.round(scaledDmg * (0.9 + Math.random() * 0.2)));
 
-    // Player Vampire Lifesteal perk
-    if (!fromRemoteUid && stats.lifesteal > 0 && !isDead) {
-      const steal = Math.max(1, Math.round(dmg * stats.lifesteal));
+    // Hardcore Capped Player Vampire Lifesteal (0.45s internal cooldown, 3.5% MaxHP/trigger, auto-weapons at 15%)
+    if (!fromRemoteUid && !isBurnTick && stats.lifesteal > 0 && lifestealScale > 0 && !isDead && cooldowns.lifesteal <= 0) {
+      const maxStealPerHit = Math.max(2, Math.round(stats.maxHp * 0.035));
+      const steal = Math.min(maxStealPerHit, Math.max(1, Math.round(dmg * stats.lifesteal * lifestealScale)));
       currentHp = Math.min(stats.maxHp, currentHp + steal);
+      cooldowns.lifesteal = 0.45;
     }
 
     // If connected and we are NOT the mob AI host, forward hit to host for authoritative HP sync
-    if (!fromRemoteUid && net.isConnected() && !net.isHost()) {
+    if (!fromRemoteUid && !isBurnTick && net.isConnected() && !net.isHost()) {
       spawnFloatingText(mob.visual.group.position, isCrit ? `💥 ${dmg}!` : `${dmg}`, color, isCrit);
       net.sendMobHitToHost(mob.id, dmg, color, isCrit, statusEffects);
       return;
@@ -903,9 +929,18 @@ function initGame() {
     const maxHp = mob.maxHp || mob.def.maxHp;
     const lvl = mob.level || mob.def.level;
     mob.hp = Math.max(0, mob.hp - dmg);
-    // Track aggro/threat toward whoever hit this mob (Host OR Remote Teammate!)
-    mob.lastAttackerUid = fromRemoteUid || net.uid;
-    mob.aggroMemoryTimer = 5.0;
+
+    // True Per-Player Multiplayer Threat Table (Host OR Remote Teammates; Burn DoTs NEVER steal aggro to Host!)
+    const attackerUid = fromRemoteUid || net.uid;
+    if (!mob.threatMap) mob.threatMap = new Map();
+    if (!isBurnTick) {
+      mob.threatMap.set(attackerUid, (mob.threatMap.get(attackerUid) || 0) + dmg);
+      mob.lastAttackerUid = attackerUid;
+      mob.aggroMemoryTimer = 6.0;
+    } else if (fromRemoteUid) {
+      mob.threatMap.set(fromRemoteUid, (mob.threatMap.get(fromRemoteUid) || 0) + dmg * 0.25);
+    }
+
     mob.visual.hpBar.redraw(`${mob.def.name} Lv.${lvl}`, mob.hp / maxHp);
     spawnFloatingText(mob.visual.group.position, isCrit ? `💥 ${dmg}!` : `${dmg}`, color, isCrit);
 
@@ -915,6 +950,7 @@ function initGame() {
         mob.burnTimer = statusEffects.burn.duration;
         mob.burnTick = 0.6;
         mob.burnDmg = statusEffects.burn.dmg;
+        mob.burnOwnerUid = attackerUid;
       }
       if (statusEffects.knockX || statusEffects.knockZ) {
         mob.knockVel.x += statusEffects.knockX || 0;
@@ -963,9 +999,24 @@ function initGame() {
     }
   }
 
+  function triggerPlayerDeath(reasonMsg = '') {
+    if (isDead) return;
+    currentHp = 0;
+    isDead = true;
+    infectionTimer = 0;
+    petrifyTimer = 0;
+    playerBurnTimer = 0;
+    respawnTimer = 3.2;
+    showToast(reasonMsg || '💀 你重傷倒下了！3 秒後於精靈村莊泉水復活…', 'danger');
+    updateHud();
+  }
+
   function takePlayerDamage(rawDmg, attackerName = '', opts = null) {
     if (isDead || dodgeAnim > 0 || isInSafeZone(playerRoot.position)) return;
-    let dmg = Math.max(1, rawDmg - stats.def * 0.65);
+    // Percentage-based Armor Mitigation (smooth scaling from Lv.1 to Lv.60+, never trivializes mobs!)
+    const attackerLvl = (opts && opts.attackerLevel) || state.level;
+    const armorMitigation = Math.min(0.68, stats.def / (stats.def + 95 + attackerLvl * 6));
+    let dmg = Math.max(1, rawDmg * (1 - armorMitigation));
     if (earthShieldTimer > 0) {
       dmg *= (1 - SKILLS.earth.shieldReduction);
     }
@@ -996,7 +1047,7 @@ function initGame() {
       playerBurnTimer = 4.5;
       playerBurnTick = 0.85;
       if (!wasBurning) {
-        showToast('🔥 你被神話巨獸的【冥火烈焰】灼傷！（持續燃燒扣血）', 'danger');
+        showToast('🔥 你被神話巨獸的【冥火烈焰】灼傷！（持續燃燒扣血，致命！）', 'danger');
       }
     }
 
@@ -1007,22 +1058,17 @@ function initGame() {
       infectionTick = 1.0;
       vfx.spawnPoisonCloud(playerRoot.position);
       if (!wasInfected && !(opts && opts.petrify)) {
-        showToast('☣️ 你感染了【屍毒 / 九頭蛇劇毒】！（持續扣血並減速 30%，可用R水之治癒或紅水淨化）', 'danger');
+        showToast('☣️ 你感染了【屍毒 / 九頭蛇劇毒】！（持續致命扣血並減速 30%，可用R或紅水淨化）', 'danger');
       }
     }
 
     if (currentHp <= 0) {
-      isDead = true;
-      infectionTimer = 0;
-      petrifyTimer = 0;
-      playerBurnTimer = 0;
-      respawnTimer = 3.2;
-      showToast(
+      triggerPlayerDeath(
         attackerName
           ? `⚔️ 你被【${attackerName}】擊敗了！3 秒後於精靈村莊復活…`
-          : '💀 你重傷倒下了！3 秒後於精靈村莊泉水復活…',
-        'danger'
+          : '💀 你重傷倒下了！3 秒後於精靈村莊泉水復活…'
       );
+      return;
     }
     updateHud();
   }
@@ -1049,8 +1095,8 @@ function initGame() {
       if (dist <= reach + mob.def.radius) {
         toMob.normalize();
         if (toMob.dot(fwd) > 0.15 || dist < 1.8) {
-          const isCrit = Math.random() < 0.22;
-          applyDamageToMob(mob, stats.atk * (isCrit ? 1.6 : 1.0), isCrit ? '#fbbf24' : '#ffffff', isCrit);
+          const isCrit = Math.random() < (stats.critChance || 0.16);
+          applyDamageToMob(mob, stats.atk * (isCrit ? 1.6 : 1.0), isCrit ? '#fbbf24' : '#ffffff', isCrit, null, null, 1.0);
         }
       }
     });
@@ -1125,7 +1171,7 @@ function initGame() {
 
       const chained = [];
       if (primaryMob) {
-        applyDamageToMob(primaryMob, stats.atk * sk.damageMult * elemMult, '#7dd3fc', true, { slow: 2.4 });
+        applyDamageToMob(primaryMob, stats.atk * sk.damageMult * elemMult, '#7dd3fc', true, { slow: 2.4 }, null, 0.45);
       } else if (primaryPlayerUid) {
         hitRemotePlayer(primaryPlayerUid, remoteAvatars.get(primaryPlayerUid), stats.atk * sk.damageMult * elemMult, '#7dd3fc');
       }
@@ -1136,7 +1182,7 @@ function initGame() {
           if (!m.alive || m === primaryMob || chained.length >= sk.chainCount - 1) return;
           if (m.visual.group.position.distanceTo(strikePos) <= sk.chainRadius) {
             chained.push(m.visual.group.position.clone());
-            applyDamageToMob(m, stats.atk * sk.damageMult * 0.72 * elemMult, '#38bdf8', false, { slow: 1.8 });
+            applyDamageToMob(m, stats.atk * sk.damageMult * 0.72 * elemMult, '#38bdf8', false, { slow: 1.8 }, null, 0.25);
           }
         });
         remoteAvatars.forEach((remote, rUid) => {
@@ -1183,7 +1229,7 @@ function initGame() {
           mobs.forEach((m) => {
             if (!m.alive) return;
             if (m.visual.group.position.distanceTo(boomPos) <= sk.aoeRadius + m.def.radius) {
-              applyDamageToMob(m, stats.atk * sk.damageMult * elemMult, '#fb923c', true, { burn: burnObj });
+              applyDamageToMob(m, stats.atk * sk.damageMult * elemMult, '#fb923c', true, { burn: burnObj }, null, 0.25);
             }
           });
           remoteAvatars.forEach((remote, rUid) => {
@@ -1198,7 +1244,7 @@ function initGame() {
       vfx.spawnWaterWave(playerRoot.position, sk.aoeRadius);
       net.broadcastFx({ type: 'water', x: playerRoot.position.x, z: playerRoot.position.z, radius: sk.aoeRadius });
 
-      const healAmt = Math.round((sk.healBase + state.level * 8) * elemMult);
+      const healAmt = Math.round((sk.healBase + state.level * 7 + stats.maxHp * 0.12) * elemMult);
       currentHp = Math.min(stats.maxHp, currentHp + healAmt);
       if (infectionTimer > 0 || petrifyTimer > 0 || playerBurnTimer > 0) {
         infectionTimer = 0;
@@ -1215,7 +1261,7 @@ function initGame() {
         const dist = diff.length();
         if (dist <= sk.aoeRadius + m.def.radius) {
           const kb = dist > 0.01 ? diff.normalize().multiplyScalar(sk.knockback) : new THREE.Vector3();
-          applyDamageToMob(m, stats.atk * sk.damageMult * elemMult, '#22d3ee', false, { slow: 3.0, knockX: kb.x, knockZ: kb.z });
+          applyDamageToMob(m, stats.atk * sk.damageMult * elemMult, '#22d3ee', false, { slow: 3.0, knockX: kb.x, knockZ: kb.z }, null, 0.25);
         }
       });
 
@@ -1245,7 +1291,7 @@ function initGame() {
         dirZ: fwd.z,
         range: sk.range
       });
-      showToast('🪨 岩石護盾已啟動（5.5 秒減傷 48%）', 'info');
+      showToast('🪨 岩石護盾已啟動（5 秒減傷 40%）', 'info');
 
       mobs.forEach((m) => {
         if (!m.alive) return;
@@ -1259,7 +1305,7 @@ function initGame() {
               slow: 2.0,
               knockX: fwd.x * 5.0,
               knockZ: fwd.z * 5.0
-            });
+            }, null, 0.25);
           }
         }
       });
@@ -1302,7 +1348,7 @@ function initGame() {
               slow: 3.2,
               knockX: fwd.x * sk.knockback,
               knockZ: fwd.z * sk.knockback
-            });
+            }, null, 0.25);
           }
         }
       });
@@ -1326,13 +1372,18 @@ function initGame() {
 
   function usePotion(kind) {
     if (isDead) return;
+    if (cooldowns.potion > 0) {
+      showToast(`🧪 藥水冷卻中（剩餘 ${cooldowns.potion.toFixed(1)} 秒）`, 'warn');
+      return;
+    }
     if (!state.potions[kind] || state.potions[kind] <= 0) {
       showToast(kind === 'hp' ? '🧪 沒有生命藥水了，回精靈村莊購買吧！' : '💧 沒有魔力藥水了，回精靈村莊購買吧！', 'warn');
       return;
     }
     state.potions[kind] -= 1;
+    cooldowns.potion = 1.2;
     if (kind === 'hp') {
-      const heal = SHOP_ITEMS.hp_potion.healHp;
+      const heal = Math.round(SHOP_ITEMS.hp_potion.healHp + stats.maxHp * (SHOP_ITEMS.hp_potion.healPct || 0.26));
       currentHp = Math.min(stats.maxHp, currentHp + heal);
       if (infectionTimer > 0 || petrifyTimer > 0 || playerBurnTimer > 0) {
         infectionTimer = 0;
@@ -1342,7 +1393,7 @@ function initGame() {
       }
       spawnFloatingText(playerRoot.position, `+${heal} HP`, '#34d399', true);
     } else {
-      const mana = SHOP_ITEMS.mp_potion.healMp;
+      const mana = Math.round(SHOP_ITEMS.mp_potion.healMp + stats.maxMp * (SHOP_ITEMS.mp_potion.healPct || 0.32));
       currentMp = Math.min(stats.maxMp, currentMp + mana);
       spawnFloatingText(playerRoot.position, `+${mana} MP`, '#38bdf8', true);
     }
@@ -2218,11 +2269,13 @@ function initGame() {
       const wItem = SHOP_ITEMS[pData.weaponId] || SHOP_ITEMS.wood_sword;
       const aItem = SHOP_ITEMS[pData.armorId] || SHOP_ITEMS.cloth_tunic;
       const sig = JSON.stringify([app, pData.weaponId, pData.armorId]);
+      const px = pData.x != null ? Number(pData.x) : 0;
+      const pz = pData.z != null ? Number(pData.z) : 10;
 
       let avatar = remoteAvatars.get(rUid);
       if (!avatar) {
         const root = new THREE.Group();
-        root.position.set(pData.x || 0, 0, pData.z || 10);
+        root.position.set(px, 0, pz);
         const model = createCharacterModel(app, wItem, aItem);
         root.add(model.group);
 
@@ -2236,7 +2289,7 @@ function initGame() {
           model,
           nameplate,
           sig,
-          targetPos: new THREE.Vector3(pData.x || 0, 0, pData.z || 10),
+          targetPos: new THREE.Vector3(px, 0, pz),
           targetRotY: pData.rotY || 0,
           data: pData,
           lastAttackStamp: pData.attackStamp || 0,
@@ -2250,7 +2303,10 @@ function initGame() {
           avatar.root.add(avatar.model.group);
           avatar.sig = sig;
         }
-        avatar.targetPos.set(pData.x || 0, 0, pData.z || 10);
+        avatar.targetPos.set(px, 0, pz);
+        if (avatar.root.position.distanceTo(avatar.targetPos) > 15) {
+          avatar.root.position.copy(avatar.targetPos);
+        }
         avatar.targetRotY = pData.rotY || 0;
         if (pData.attackStamp && pData.attackStamp !== avatar.lastAttackStamp) {
           avatar.lastAttackStamp = pData.attackStamp;
@@ -2272,8 +2328,15 @@ function initGame() {
         hudNetBadge.classList.toggle('online', !!online);
       }
     },
-    onPlayersUpdate(remoteMap) {
+    onPlayersUpdate(remoteMap, isNowHost) {
       syncRemoteAvatars(remoteMap);
+      if (isNowHost) {
+        const ctx = getWorldScalingContext();
+        const key = `${ctx.level}_${ctx.activePlayers}`;
+        if (key !== lastScalingKey) {
+          rescaleLivingMobsToPlayerLevel();
+        }
+      }
     },
     onIncomingHit(hit) {
       if (hit.type === 'heal') {
@@ -2288,6 +2351,7 @@ function initGame() {
         // Authoritative monster hit routed from Host when monster aggros or AoE-hits this teammate!
         if (isDead || isInSafeZone(playerRoot.position)) return;
         takePlayerDamage(hit.dmg || 15, hit.fromName || '魔物', {
+          attackerLevel: hit.lvl || state.level,
           infect: !!hit.infect,
           hellfire: !!hit.hellfire,
           petrify: !!hit.petrify
@@ -2346,14 +2410,19 @@ function initGame() {
       mobs.forEach((mob) => {
         const synced = mobsMap[mob.id];
         if (!synced) return;
+        const wasDead = !mob.alive;
         mob.alive = !!synced.alive;
         mob.hp = synced.hp != null ? synced.hp : mob.hp;
         if (synced.maxHp) mob.maxHp = synced.maxHp;
         if (synced.lvl) mob.level = synced.lvl;
+        if (synced.atk) mob.atk = synced.atk;
         mob.visual.group.visible = mob.alive;
         if (mob.alive) {
           mob.syncTargetPos = new THREE.Vector3(synced.x, 0, synced.z);
           mob.syncTargetRotY = synced.rotY || 0;
+          if (wasDead || mob.visual.group.position.distanceTo(mob.syncTargetPos) > 14) {
+            mob.visual.group.position.copy(mob.syncTargetPos);
+          }
           const mHp = mob.maxHp || mob.def.maxHp;
           const mLvl = mob.level || mob.def.level;
           mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mLvl}`, mob.hp / mHp);
@@ -2648,37 +2717,43 @@ function initGame() {
         petrifyTimer = Math.max(0, petrifyTimer - dt);
       }
 
-      // 2. Hellfire Burn DoT (Cerberus / Chimera / Dragon)
+      // 2. Hellfire Burn DoT (Cerberus / Chimera / Dragon — LETHAL!)
       if (playerBurnTimer > 0) {
         playerBurnTimer = Math.max(0, playerBurnTimer - dt);
         playerBurnTick -= dt;
         if (playerBurnTick <= 0) {
           playerBurnTick = 0.85;
-          const fireDoT = Math.max(7, Math.round(stats.maxHp * 0.052));
-          currentHp = Math.max(1, currentHp - fireDoT);
+          const fireDoT = Math.max(8, Math.round(stats.maxHp * 0.06));
+          currentHp = Math.max(0, currentHp - fireDoT);
           spawnFloatingText(playerRoot.position, `🔥 -${fireDoT}`, '#fb923c', false);
+          if (currentHp <= 0) {
+            triggerPlayerDeath('🔥 你被神話巨獸的【冥火烈焰】燒成灰燼！3 秒後於精靈村莊復活…');
+          }
         }
       }
 
-      // 3. Zombie Plague / Hydra Venom Infection DoT & Slow
-      if (infectionTimer > 0) {
+      // 3. Zombie Plague / Hydra Venom Infection DoT & Slow (LETHAL!)
+      if (!isDead && infectionTimer > 0) {
         infectionTimer = Math.max(0, infectionTimer - dt);
         infectionTick -= dt;
         if (infectionTick <= 0) {
           infectionTick = 1.0;
-          const poisonDmg = Math.max(5, Math.round(stats.maxHp * 0.052 * (1 - (stats.poisonResist || 0))));
-          currentHp = Math.max(1, currentHp - poisonDmg);
+          const poisonDmg = Math.max(6, Math.round(stats.maxHp * 0.058 * (1 - (stats.poisonResist || 0))));
+          currentHp = Math.max(0, currentHp - poisonDmg);
           spawnFloatingText(playerRoot.position, `☣️ -${poisonDmg}`, '#84cc16', false);
           vfx.spawnPoisonCloud(playerRoot.position);
+          if (currentHp <= 0) {
+            triggerPlayerDeath('☣️ 你因【屍毒／深淵劇毒】毒發身亡！3 秒後於精靈村莊復活…');
+          }
         }
       }
 
-      // --- Roguelike Auto-Weapons (Vampire Survivors style, Max Lv.5) ---
+      // --- Roguelike Auto-Weapons (Vampire Survivors style, Max Lv.5, 15% Lifesteal Efficiency) ---
       const perksObj = state.perks || {};
 
       // 1. Orbiting Blades (🗡️ 環繞聖劍)
       const bladeRanks = Math.min(MAX_PERK_LEVEL, perksObj.orbit_blades || 0);
-      if (bladeRanks > 0) {
+      if (!isDead && bladeRanks > 0) {
         orbitAngle += dt * (2.6 + bladeRanks * 0.35);
         orbitBladesGroup.rotation.y = orbitAngle;
         for (const [mId, rem] of orbitHitCooldowns.entries()) {
@@ -2686,12 +2761,12 @@ function initGame() {
           else orbitHitCooldowns.set(mId, rem - dt);
         }
         if (!inSafe) {
-          const bladeDmg = stats.atk * (0.42 + bladeRanks * 0.22);
+          const bladeDmg = stats.atk * (0.34 + bladeRanks * 0.16);
           mobs.forEach((m) => {
             if (!m.alive || orbitHitCooldowns.has(m.id)) return;
             if (m.visual.group.position.distanceTo(playerRoot.position) <= 2.75 + m.def.radius) {
-              orbitHitCooldowns.set(m.id, 0.48);
-              applyDamageToMob(m, bladeDmg, '#fef08a', false);
+              orbitHitCooldowns.set(m.id, 0.52);
+              applyDamageToMob(m, bladeDmg, '#fef08a', false, null, null, 0.15);
             }
           });
         }
@@ -2699,19 +2774,19 @@ function initGame() {
 
       // 2. Garlic Holy Fire Aura (🔥 聖炎驅魔結界)
       const garlicRanks = Math.min(MAX_PERK_LEVEL, perksObj.garlic_aura || 0);
-      if (garlicRanks > 0) {
+      if (!isDead && garlicRanks > 0) {
         garlicAuraMesh.rotation.z += dt * 1.2;
         garlicTick -= dt;
         if (garlicTick <= 0) {
-          garlicTick = 0.85;
+          garlicTick = 0.9;
           if (!inSafe) {
-            const auraDmg = stats.atk * (0.34 + garlicRanks * 0.18);
+            const auraDmg = stats.atk * (0.28 + garlicRanks * 0.14);
             mobs.forEach((m) => {
               if (!m.alive) return;
               if (m.visual.group.position.distanceTo(playerRoot.position) <= 3.85 + m.def.radius) {
                 applyDamageToMob(m, auraDmg, '#fb923c', false, {
                   burn: { duration: 2.2, dmg: Math.round(8 + garlicRanks * 6) }
-                });
+                }, null, 0.15);
               }
             });
           }
@@ -2720,10 +2795,10 @@ function initGame() {
 
       // 3. Auto Thunder Strike (⚡ 雷神自動落雷)
       const thunderRanks = Math.min(MAX_PERK_LEVEL, perksObj.auto_thunder || 0);
-      if (thunderRanks > 0) {
+      if (!isDead && thunderRanks > 0) {
         autoThunderTick -= dt;
         if (autoThunderTick <= 0) {
-          autoThunderTick = Math.max(1.1, 2.7 - thunderRanks * 0.32);
+          autoThunderTick = Math.max(1.25, 2.8 - thunderRanks * 0.30);
           if (!inSafe) {
             const candidates = mobs.filter(
               (m) => m.alive && m.visual.group.position.distanceTo(playerRoot.position) <= 13.5
@@ -2732,7 +2807,7 @@ function initGame() {
               const target = candidates[Math.floor(Math.random() * candidates.length)];
               const tPos = target.visual.group.position.clone();
               vfx.spawnLightning(tPos, []);
-              applyDamageToMob(target, stats.atk * (0.85 + thunderRanks * 0.35), '#7dd3fc', true, { slow: 1.5 });
+              applyDamageToMob(target, stats.atk * (0.72 + thunderRanks * 0.26), '#7dd3fc', true, { slow: 1.5 }, null, 0.15);
             }
           }
         }
@@ -2740,10 +2815,10 @@ function initGame() {
 
       // 4. Frost Nova Pulse (❄️ 寒霜新星脈衝)
       const frostRanks = Math.min(MAX_PERK_LEVEL, perksObj.frost_nova || 0);
-      if (frostRanks > 0) {
+      if (!isDead && frostRanks > 0) {
         frostNovaTick -= dt;
         if (frostNovaTick <= 0) {
-          frostNovaTick = Math.max(2.2, 4.6 - frostRanks * 0.45);
+          frostNovaTick = Math.max(2.4, 4.7 - frostRanks * 0.42);
           if (!inSafe) {
             const radius = 6.8 + frostRanks * 0.6;
             const hasNearby = mobs.some(
@@ -2752,11 +2827,11 @@ function initGame() {
             if (hasNearby) {
               vfx.spawnFrostNova(playerRoot.position, radius);
               net.broadcastFx({ type: 'frost', x: playerRoot.position.x, z: playerRoot.position.z, radius });
-              const frostDmg = stats.atk * (0.65 + frostRanks * 0.28);
+              const frostDmg = stats.atk * (0.55 + frostRanks * 0.22);
               mobs.forEach((m) => {
                 if (!m.alive) return;
                 if (m.visual.group.position.distanceTo(playerRoot.position) <= radius + m.def.radius) {
-                  applyDamageToMob(m, frostDmg, '#67e8f9', false, { slow: 3.2 });
+                  applyDamageToMob(m, frostDmg, '#67e8f9', false, { slow: 3.2 }, null, 0.15);
                 }
               });
             }
@@ -2814,7 +2889,7 @@ function initGame() {
       avatar.model.animate(dt, isRmMoving, avatar.attackAnim, 0, !!(avatar.data && avatar.data.shield));
     });
 
-    // --- Multi-Player Monster Aggro, Threat & Combat Helpers ---
+    // --- Multi-Player Monster Aggro, Per-Player Threat Table & Cleave Helpers ---
     function getLivingWorldTargets() {
       const list = [];
       if (!isDead && !isInSafeZone(playerRoot.position)) {
@@ -2822,33 +2897,72 @@ function initGame() {
       }
       remoteAvatars.forEach((avatar, rUid) => {
         if (!avatar || !avatar.data) return;
-        if ((avatar.data.hp || 0) <= 0) return;
-        if (isInSafeZone(avatar.root.position)) return;
-        list.push({ isLocal: false, uid: rUid, pos: avatar.root.position, name: avatar.data.name || '冒險者' });
+        if (avatar.data.hp != null && avatar.data.hp <= 0) return;
+        // Always use live Firebase targetPos (never lags behind visual lerp!)
+        const livePos = avatar.targetPos || avatar.root.position;
+        if (isInSafeZone(livePos)) return;
+        list.push({ isLocal: false, uid: rUid, pos: livePos, name: avatar.data.name || '冒險者' });
       });
       return list;
     }
 
-    function pickMobTarget(mob, targets) {
+    function pickMobTarget(mob, targets, dtStep) {
       const pos = mob.visual.group.position;
-      let bestTarget = null;
-      let bestScore = Infinity;
-      let bestDist = Infinity;
+      if (!mob.threatMap) mob.threatMap = new Map();
 
+      // Smoothly decay accumulated threat so mobs naturally notice whoever is currently fighting or closest
+      const decay = Math.exp(-0.24 * dtStep);
+      for (const [tUid, val] of mob.threatMap.entries()) {
+        const nextVal = val * decay;
+        if (nextVal < 1) mob.threatMap.delete(tUid);
+        else mob.threatMap.set(tUid, nextVal);
+      }
+
+      // Collect all living players in aggro range
+      const inRange = [];
       for (const t of targets) {
         const dist = pos.distanceTo(t.pos);
-        const isLastAttacker = mob.aggroMemoryTimer > 0 && mob.lastAttackerUid && t.uid === mob.lastAttackerUid;
-        const effectiveAggro = mob.def.aggroRange + (isLastAttacker ? 10 : 0);
-        if (dist > effectiveAggro) continue;
-        // Threat preference (-4.5m) for whichever player (Host or Teammate) actively attacked the mob!
-        const score = dist - (isLastAttacker ? 4.5 : 0);
-        if (score < bestScore) {
-          bestScore = score;
-          bestTarget = t;
-          bestDist = dist;
+        const dmgThreat = mob.threatMap.get(t.uid) || 0;
+        const effectiveAggro = mob.def.aggroRange + (dmgThreat > 5 ? 12 : 0);
+        if (dist <= effectiveAggro) {
+          inRange.push({ target: t, dist, dmgThreat });
         }
       }
-      return bestTarget ? { target: bestTarget, dist: bestDist } : null;
+      if (inRange.length === 0) {
+        mob.currentTargetUid = null;
+        return null;
+      }
+
+      // Multi-Target Rotation: Bosses & MiniBosses periodically shift pressure when 2+ players fight them!
+      if (inRange.length >= 2 && (mob.def.isBoss || mob.def.isMiniBoss)) {
+        mob.retargetTimer = (mob.retargetTimer || 4.5) - dtStep;
+        if (mob.retargetTimer <= 0) {
+          mob.retargetTimer = mob.def.isBoss ? (4.0 + Math.random() * 2.5) : (5.0 + Math.random() * 2.5);
+          if (mob.currentTargetUid && mob.threatMap.has(mob.currentTargetUid)) {
+            // Softly reduce current focus threat so nearby teammates draw aggro and share Boss pressure!
+            mob.threatMap.set(mob.currentTargetUid, mob.threatMap.get(mob.currentTargetUid) * 0.45);
+          }
+        }
+      }
+
+      // Pick highest combined (proximity + damage threat) challenger
+      let best = null;
+      let bestScore = -Infinity;
+      for (const cand of inRange) {
+        const proximityThreat = Math.max(0, (mob.def.aggroRange + 12 - cand.dist) * 28);
+        const stickyBonus = (mob.currentTargetUid === cand.target.uid) ? 65 : 0;
+        const totalScore = proximityThreat + cand.dmgThreat + stickyBonus;
+        if (totalScore > bestScore) {
+          bestScore = totalScore;
+          best = cand;
+        }
+      }
+
+      if (best) {
+        mob.currentTargetUid = best.target.uid;
+        return { target: best.target, dist: best.dist };
+      }
+      return null;
     }
 
     function damagePlayerTarget(target, rawDmg, mobName, opts = null, knockVec = null) {
@@ -2862,6 +2976,7 @@ function initGame() {
         net.sendPlayerHit(target.uid, {
           type: 'mob',
           fromName: mobName,
+          lvl: (opts && opts.attackerLevel) || 1,
           dmg: Math.max(1, Math.round(rawDmg)),
           infect: !!(opts && opts.infect),
           hellfire: !!(opts && opts.hellfire),
@@ -2894,7 +3009,7 @@ function initGame() {
       if (!runLocalMobAi) {
         if (mob.alive && mob.syncTargetPos) {
           const moved = mob.visual.group.position.distanceTo(mob.syncTargetPos) > 0.1;
-          mob.visual.group.position.lerp(mob.syncTargetPos, 0.2);
+          mob.visual.group.position.lerp(mob.syncTargetPos, 0.22);
           mob.visual.group.rotation.y = mob.syncTargetRotY || 0;
           mob.visual.animate(dt, moved, false);
         }
@@ -2905,11 +3020,15 @@ function initGame() {
         mob.respawnTimer -= dt;
         if (mob.respawnTimer <= 0) {
           mob.alive = true;
+          mob.hasEnraged = false;
           mob.burnTimer = 0;
+          mob.burnOwnerUid = null;
           mob.slowTimer = 0;
           mob.dashBoostTimer = 0;
           mob.lastAttackerUid = null;
+          mob.currentTargetUid = null;
           mob.aggroMemoryTimer = 0;
+          if (mob.threatMap) mob.threatMap.clear();
           mob.visual.group.position.copy(mob.home);
           mob.visual.group.visible = true;
           applyScaledStatsToMob(mob, true);
@@ -2928,13 +3047,13 @@ function initGame() {
         mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mobLvl}`, mob.hp / mobMaxHp);
       }
 
-      // Burn DoT
+      // Burn DoT (Credits burnOwnerUid, NEVER hijacks aggro back to Host!)
       if (mob.burnTimer > 0) {
         mob.burnTimer -= dt;
         mob.burnTick -= dt;
         if (mob.burnTick <= 0) {
           mob.burnTick = 0.75;
-          applyDamageToMob(mob, mob.burnDmg, '#f97316', false);
+          applyDamageToMob(mob, mob.burnDmg, '#f97316', false, null, mob.burnOwnerUid || null, 0, true);
           if (!mob.alive) return;
         }
       }
@@ -2950,16 +3069,28 @@ function initGame() {
 
       const pos = mob.visual.group.position;
       const distToHome = pos.distanceTo(mob.home);
-      const picked = distToHome < 58 ? pickMobTarget(mob, livingTargets) : null;
+      const picked = distToHome < 62 ? pickMobTarget(mob, livingTargets, dt) : null;
       let moving = false;
       let attacking = false;
 
-      // Enrage below 55% HP for berserker bosses/elites
-      const isEnraged = (mob.def.enrage || mob.type === 'cerberus') && mob.hp < mobMaxHp * 0.55;
+      // Universal Boss Enrage below 50% HP (+35% ATK, +32% Speed, Faster Cooldowns!)
+      const isEnraged = (mob.def.isBoss || mob.def.enrage) && mob.hp < mobMaxHp * 0.50;
+      if (isEnraged && !mob.hasEnraged) {
+        mob.hasEnraged = true;
+        spawnFloatingText(pos, mob.def.isBoss ? '💢 BOSS 狂暴覺醒!' : '💢 嗜血狂暴!', '#ef4444', true);
+      }
 
       if (picked) {
         const target = picked.target;
         const distToTarget = picked.dist;
+        const cdTick = dt * (isEnraged ? 1.32 : 1.0);
+        const dmgOptsBase = {
+          attackerLevel: mobLvl,
+          infect: !!mob.def.infect,
+          hellfire: !!mob.def.hellfire,
+          petrify: !!mob.def.petrify
+        };
+
         // Face chosen target (Host OR Teammate!)
         const toTarget = new THREE.Vector3().subVectors(target.pos, pos);
         toTarget.y = 0;
@@ -2968,7 +3099,7 @@ function initGame() {
 
         // 1. Dash Charge Skill (Minotaur / Orc / Shuten-Doji / Jaguar Warrior)
         if (mob.def.chargeCooldown) {
-          mob.chargeTimer -= dt;
+          mob.chargeTimer -= cdTick;
           if (mob.chargeTimer <= 0 && distToTarget >= 3.2 && distToTarget <= 18) {
             mob.chargeTimer = mob.def.chargeCooldown;
             mob.dashBoostTimer = 0.95;
@@ -2987,8 +3118,8 @@ function initGame() {
 
         // 2. Sonic / Madness / Gale Shout (Draugr / Cthulhu / Tengu / Storm Dragon)
         if (mob.def.shoutCooldown) {
-          mob.shoutTimer -= dt;
-          if (mob.shoutTimer <= 0 && distToTarget <= 15) {
+          mob.shoutTimer -= cdTick;
+          if (mob.shoutTimer <= 0 && distToTarget <= 15.5) {
             mob.shoutTimer = mob.def.shoutCooldown;
             vfx.spawnDragonShout(pos, dirToTarget, 13.5);
             net.broadcastFx({ type: 'shout', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 13.5 });
@@ -3007,9 +3138,9 @@ function initGame() {
             damageAllTargetsInRadius(
               pos,
               13.5,
-              mobAtk * 1.25,
+              mobAtk * (isEnraged ? 1.55 : 1.25),
               mob.def.name,
-              { infect: !!mob.def.infect, petrify: !!mob.def.petrify },
+              { attackerLevel: mobLvl, infect: !!mob.def.infect, petrify: !!mob.def.petrify },
               pos,
               4.8
             );
@@ -3018,7 +3149,7 @@ function initGame() {
 
         // 3. Exploding Boulder / Ink Bomb Throw (Cyclops / Yeti / Kraken)
         if (mob.def.boulderCooldown) {
-          mob.boulderTimer -= dt;
+          mob.boulderTimer -= cdTick;
           if (mob.boulderTimer <= 0 && distToTarget >= 4.0 && distToTarget <= 19) {
             mob.boulderTimer = mob.def.boulderCooldown;
             const targetSpot = target.pos.clone();
@@ -3027,7 +3158,8 @@ function initGame() {
             net.broadcastFx({ type: 'bomb', x: pos.x, z: pos.z, tx: targetSpot.x, tz: targetSpot.z });
             vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
               vfx.spawnEarthSpikes(hitPos, dirToTarget, 3.8);
-              damageAllTargetsInRadius(hitPos, 4.2, mobAtk * 1.35, mob.def.name, {
+              damageAllTargetsInRadius(hitPos, 4.4, mobAtk * (isEnraged ? 1.65 : 1.35), mob.def.name, {
+                attackerLevel: mobLvl,
                 infect: !!mob.def.infect,
                 petrify: mob.type === 'yeti'
               });
@@ -3037,31 +3169,28 @@ function initGame() {
 
         // 4. Mythic Breath / Solar Flare / Eldritch Cataclysm Telegraph!
         if (mob.def.breathCooldown) {
-          mob.breathTimer -= dt;
+          mob.breathTimer -= cdTick;
           if (mob.breathTimer <= 0 && distToTarget <= 22) {
             mob.breathTimer = mob.def.breathCooldown;
             const targetSpot = target.pos.clone();
-            net.broadcastFx({ type: 'breath', x: targetSpot.x, z: targetSpot.z, radius: 7.6, delay: 1.08 });
-            vfx.spawnDragonBreathWarning(targetSpot, 7.6, 1.08, (blastPos) => {
+            const telegraphDelay = isEnraged ? 0.92 : 1.05;
+            net.broadcastFx({ type: 'breath', x: targetSpot.x, z: targetSpot.z, radius: 7.8, delay: telegraphDelay });
+            vfx.spawnDragonBreathWarning(targetSpot, 7.8, telegraphDelay, (blastPos) => {
               if (mob.type === 'frost_wyrm' || mob.type === 'leviathan') {
-                vfx.spawnFrostNova(blastPos, 7.2);
-                net.broadcastFx({ type: 'frost', x: blastPos.x, z: blastPos.z, radius: 7.2 });
+                vfx.spawnFrostNova(blastPos, 7.4);
+                net.broadcastFx({ type: 'frost', x: blastPos.x, z: blastPos.z, radius: 7.4 });
               } else if (mob.type === 'storm_dragon') {
                 vfx.spawnLightning(blastPos, []);
                 net.broadcastFx({ type: 'lightning', x: blastPos.x, z: blastPos.z, chains: [] });
               }
-              damageAllTargetsInRadius(blastPos, 7.6, mobAtk * 1.65, mob.def.name, {
-                infect: !!mob.def.infect,
-                hellfire: !!mob.def.hellfire,
-                petrify: !!mob.def.petrify
-              });
+              damageAllTargetsInRadius(blastPos, 7.8, mobAtk * (isEnraged ? 1.95 : 1.65), mob.def.name, dmgOptsBase);
             });
           }
         }
 
         if (distToTarget > mob.def.attackRange) {
           const dashMult = mob.dashBoostTimer > 0 ? 2.25 : 1.0;
-          const spd = mob.def.speed * dashMult * (isEnraged ? 1.38 : 1.0) * (mob.slowTimer > 0 ? 0.45 : 1.0);
+          const spd = mob.def.speed * dashMult * (isEnraged ? 1.32 : 1.0) * (mob.slowTimer > 0 ? 0.45 : 1.0);
           const nextPos = pos.clone().addScaledVector(dirToTarget, spd * dt);
           // Monsters never enter Elf Village safe zone
           if (!isInSafeZone(nextPos)) {
@@ -3072,14 +3201,14 @@ function initGame() {
           attacking = true;
           mob.atkTimer -= dt;
           if (mob.atkTimer <= 0) {
-            mob.atkTimer = mob.def.attackCooldown * (isEnraged ? 0.76 : 1.0);
+            mob.atkTimer = mob.def.attackCooldown * (isEnraged ? 0.72 : 1.0);
             const rawAtk = mobAtk * (isEnraged ? 1.35 : 1.0);
 
             if (mob.type === 'gnome') {
               const targetSpot = target.pos.clone();
               net.broadcastFx({ type: 'bomb', x: pos.x, z: pos.z, tx: targetSpot.x, tz: targetSpot.z });
               vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
-                damageAllTargetsInRadius(hitPos, 3.4, rawAtk, mob.def.name);
+                damageAllTargetsInRadius(hitPos, 3.6, rawAtk, mob.def.name, { attackerLevel: mobLvl });
               });
             } else if (mob.type === 'centaur' || mob.type === 'kyubi') {
               // Ranged arrow / Nine-Tail Foxfire bolt
@@ -3090,33 +3219,52 @@ function initGame() {
                 14,
                 (projPos) => getLivingWorldTargets().some((t) => t.pos.distanceTo(projPos) <= 1.7),
                 (hitPos) => {
-                  damageAllTargetsInRadius(hitPos, 2.8, rawAtk, mob.def.name, {
+                  damageAllTargetsInRadius(hitPos, 3.0, rawAtk, mob.def.name, {
+                    attackerLevel: mobLvl,
                     hellfire: mob.type === 'kyubi',
                     petrify: mob.type === 'kyubi'
                   });
                 }
               );
             } else if (mob.type === 'medusa' || mob.type === 'cthulhu') {
+              // Sweeping Petrify / Madness Cone — hits primary target AND nearby teammates!
               vfx.spawnDragonShout(pos, dirToTarget, 9.8);
               net.broadcastFx({ type: 'shout', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 9.8 });
               vfx.spawnPoisonCloud(target.pos);
-              damagePlayerTarget(target, rawAtk, mob.def.name, { infect: true, petrify: true });
+              damageAllTargetsInRadius(target.pos, 5.2, rawAtk, mob.def.name, {
+                attackerLevel: mobLvl,
+                infect: true,
+                petrify: true
+              });
             } else if (mob.type === 'vampire') {
-              damagePlayerTarget(target, rawAtk, mob.def.name);
-              const drainHeal = Math.round(rawAtk * (mob.def.lifesteal || 0.75));
+              damagePlayerTarget(target, rawAtk, mob.def.name, { attackerLevel: mobLvl });
+              const drainHeal = Math.round(rawAtk * (mob.def.lifesteal || 0.85));
               mob.hp = Math.min(mobMaxHp, mob.hp + drainHeal);
               mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mobLvl}`, mob.hp / mobMaxHp);
               spawnFloatingText(pos, `🦇 +${drainHeal}`, '#f43f5e', false);
             } else if (mob.def.stomp) {
-              vfx.spawnEarthSpikes(pos, dirToTarget, 5.4);
-              net.broadcastFx({ type: 'earth', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 5.4 });
-              damagePlayerTarget(target, rawAtk, mob.def.name, { infect: !!mob.def.infect }, dirToTarget.clone().multiplyScalar(3.0));
+              // AoE Ground Slam — hits ALL players standing inside stomp radius (Host & Teammates!)
+              vfx.spawnEarthSpikes(pos, dirToTarget, 5.8);
+              net.broadcastFx({ type: 'earth', x: pos.x, z: pos.z, dirX: dirToTarget.x, dirZ: dirToTarget.z, range: 5.8 });
+              damageAllTargetsInRadius(
+                pos,
+                mob.def.attackRange + 2.8,
+                rawAtk,
+                mob.def.name,
+                { attackerLevel: mobLvl, infect: !!mob.def.infect },
+                pos,
+                3.2
+              );
             } else {
-              damagePlayerTarget(target, rawAtk, mob.def.name, {
-                infect: !!mob.def.infect,
-                hellfire: !!mob.def.hellfire,
-                petrify: !!mob.def.petrify
-              });
+              damagePlayerTarget(target, rawAtk, mob.def.name, dmgOptsBase);
+              // Mythic Bosses also cleave nearby players standing inside their giant swing arc!
+              if (mob.def.isBoss && livingTargets.length > 1) {
+                livingTargets.forEach((other) => {
+                  if (other.uid !== target.uid && other.pos.distanceTo(target.pos) <= 4.0) {
+                    damagePlayerTarget(other, rawAtk * 0.85, mob.def.name, dmgOptsBase);
+                  }
+                });
+              }
             }
           }
         }
@@ -3130,6 +3278,7 @@ function initGame() {
         moving = true;
         if (mob.hp < mobMaxHp) {
           mob.hp = Math.min(mobMaxHp, mob.hp + mobMaxHp * 0.08 * dt);
+          if (mob.hp >= mobMaxHp * 0.65) mob.hasEnraged = false;
           mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mobLvl}`, mob.hp / mobMaxHp);
         }
       }
@@ -3165,6 +3314,7 @@ function initGame() {
             hp: Math.round(m.hp),
             maxHp: Math.round(m.maxHp || m.def.maxHp),
             lvl: m.level || m.def.level,
+            atk: Math.round(m.atk || m.def.atk),
             x: Number(m.visual.group.position.x.toFixed(2)),
             z: Number(m.visual.group.position.z.toFixed(2)),
             rotY: Number(m.visual.group.rotation.y.toFixed(2))

@@ -9,7 +9,7 @@
 
   <!-- Styling -->
   <link rel="stylesheet" href="assets/css/style.css?v=2.2.0">
-  <link rel="stylesheet" href="assets/css/game.css?v=3.6.0">
+  <link rel="stylesheet" href="assets/css/game.css?v=4.0.0">
 
   <!-- Three.js ES Module Import Map -->
   <script type="importmap">
@@ -147,6 +147,7 @@
           <button type="button" class="rpg-hud-btn" id="rpg-auth-btn">🔐 登入帳號</button>
           <button type="button" class="rpg-hud-btn" id="rpg-customize-btn">🎨 捏角色</button>
           <button type="button" class="rpg-hud-btn" id="rpg-bag-btn">🎒 裝備</button>
+          <button type="button" class="rpg-hud-btn" id="rpg-codex-btn">📖 圖鑑/素材</button>
           <button type="button" class="rpg-hud-btn" id="rpg-party-btn">👥 隊伍</button>
         </div>
 
@@ -483,6 +484,50 @@
     </div>
   </dialog>
 
+  <!-- Dwarf Blacksmith Forge Dialog (Monster Hunter × Baldur's Gate Material Crafting!) -->
+  <dialog class="modal-dialog" id="rpg-forge-dialog" aria-label="矮人鐵匠神兵鍛造工坊">
+    <div class="rpg-dialog-card rpg-forge-card">
+      <button type="button" class="modal-close-x" id="rpg-forge-close" aria-label="關閉">&times;</button>
+      <h2>⚒️ 矮人傳奇鐵匠・魔物獵人神兵鍛造工坊</h2>
+      <p class="rpg-dialog-sub">「真正的頂級神兵無法用金幣直接買到！狩獵全球神話巨獸帶回素材，我來幫你打造傳說！」</p>
+      <div class="rpg-shop-gold-pill">💰 目前金幣：<span id="rpg-forge-gold">0 G</span></div>
+
+      <div class="rpg-tab-row">
+        <button type="button" class="rpg-tab-btn rpg-forge-tab active" data-cat="weapon">⚔️ 鍛造頂級武器</button>
+        <button type="button" class="rpg-tab-btn rpg-forge-tab" data-cat="armor">🛡️ 鍛造神話防具</button>
+      </div>
+
+      <div class="rpg-item-list" id="rpg-forge-list"></div>
+    </div>
+  </dialog>
+
+  <!-- Baldur's Gate Alchemist Sage Dialog -->
+  <dialog class="modal-dialog" id="rpg-alchemist-dialog" aria-label="柏德之門秘法鍊金舖">
+    <div class="rpg-dialog-card">
+      <button type="button" class="modal-close-x" id="rpg-alchemist-close" aria-label="關閉">&times;</button>
+      <h2>🧙 柏德之門・秘法鍊金賢者舖</h2>
+      <p class="rpg-dialog-sub">「這裡販售頂級濃縮秘藥、能直接抽取肉鴿賜福的秘法卷軸，以及稀世柏德安秘銀！」</p>
+      <div class="rpg-shop-gold-pill">💰 目前金幣：<span id="rpg-alchemist-gold">0 G</span></div>
+      <div class="rpg-item-list" id="rpg-alchemist-list"></div>
+    </div>
+  </dialog>
+
+  <!-- World Codex, Biomes Guide & Monster Hunter Materials Pouch Dialog -->
+  <dialog class="modal-dialog" id="rpg-codex-dialog" aria-label="世界圖鑑與狩獵素材背包">
+    <div class="rpg-dialog-card rpg-forge-card">
+      <button type="button" class="modal-close-x" id="rpg-codex-close" aria-label="關閉">&times;</button>
+      <h2>📖 世界生態圖鑑與魔物狩獵素材袋</h2>
+      <p class="rpg-dialog-sub">怪物等級會隨玩家等級動態自適應強化！查看 11 大地形方位與各 Boss 掉落素材：</p>
+
+      <div class="rpg-tab-row">
+        <button type="button" class="rpg-tab-btn rpg-codex-tab active" data-tab="materials">💎 我的狩獵素材袋</button>
+        <button type="button" class="rpg-tab-btn rpg-codex-tab" data-tab="zones">🗺️ 11 大地形座標指南</button>
+      </div>
+
+      <div class="rpg-item-list" id="rpg-codex-list"></div>
+    </div>
+  </dialog>
+
   <!-- Chat JavaScript Modules -->
   <script src="assets/js/config.js?v=3.2.0"></script>
   <script src="assets/js/emoji.js?v=2.0.0"></script>
@@ -490,6 +535,6 @@
   <script src="assets/js/chat.js?v=3.3.0"></script>
 
   <!-- 3D Fantasy RPG ES Module Entry -->
-  <script type="module" src="assets/js/game/main.js?v=3.6.0"></script>
+  <script type="module" src="assets/js/game/main.js?v=4.0.0"></script>
 </body>
 </html>

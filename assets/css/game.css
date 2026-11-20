@@ -1095,3 +1095,58 @@
   color: var(--text-secondary);
   line-height: 1.4;
 }
+
+/* Blacksmith Forge & World Codex Styles (Monster Hunter × Baldur's Gate) */
+.rpg-forge-card {
+  max-width: 620px;
+}
+
+.rpg-item-card.rarity-mythic {
+  border-color: rgba(250, 204, 21, 0.55);
+  background: linear-gradient(135deg, rgba(67, 20, 7, 0.45), rgba(30, 27, 58, 0.72));
+  box-shadow: 0 4px 18px rgba(250, 204, 21, 0.14);
+}
+
+.rpg-item-card.rarity-epic {
+  border-color: rgba(192, 132, 252, 0.48);
+  background: linear-gradient(135deg, rgba(59, 7, 100, 0.35), rgba(19, 17, 38, 0.7));
+}
+
+.rpg-recipe-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.rpg-mat-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.16rem 0.52rem;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.rpg-mat-chip.ok {
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.55);
+  background: rgba(6, 78, 59, 0.45);
+}
+
+.rpg-mat-chip.miss {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(127, 29, 29, 0.35);
+}
+
+.rpg-mat-qty-pill {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #fde047;
+  background: rgba(250, 204, 21, 0.14);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  padding: 0.32rem 0.78rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}

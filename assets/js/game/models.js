@@ -128,6 +128,80 @@ export function buildWeaponMesh(weaponItem) {
     tip.rotation.y = Math.PI / 4;
     tip.position.y = 1.96;
     g.add(tip);
+  } else if (style === 'trident') {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 2.05, 10), guardMat);
+    pole.position.y = 0.78;
+    g.add(pole);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 0.08), guardMat);
+    bar.position.y = 1.78;
+    g.add(bar);
+    [-0.26, 0, 0.26].forEach((tx, idx) => {
+      const prong = new THREE.Mesh(new THREE.ConeGeometry(0.055, idx === 1 ? 0.65 : 0.48, 8), bladeMat);
+      prong.position.set(tx, idx === 1 ? 2.1 : 2.0, 0);
+      g.add(prong);
+    });
+  } else if (style === 'spear') {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.045, 2.15, 10), guardMat);
+    pole.position.y = 0.85;
+    g.add(pole);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.72, 6), bladeMat);
+    tip.position.y = 2.18;
+    g.add(tip);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.03, 8, 16), bladeMat);
+    ring.position.y = 1.82;
+    g.add(ring);
+  } else if (style === 'katana') {
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.44, 8), mat('#1e1b4b', 0.7));
+    handle.position.y = 0.08;
+    g.add(handle);
+    const tsuba = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 14), guardMat);
+    tsuba.position.y = 0.3;
+    g.add(tsuba);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.085, 1.55, 0.035), bladeMat);
+    blade.position.y = 1.1;
+    blade.rotation.z = 0.04;
+    g.add(blade);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 4), bladeMat);
+    tip.position.set(-0.04, 1.96, 0);
+    g.add(tip);
+  } else if (style === 'tome_staff') {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 2.05, 10), mat('#1e1b4b', 0.4, 0.4));
+    pole.position.y = 0.75;
+    g.add(pole);
+    const eyeSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(0.24, 14, 12),
+      mat('#22c55e', 0.1, 0.2, '#4ade80', 1.4)
+    );
+    eyeSphere.position.y = 1.92;
+    g.add(eyeSphere);
+    const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 20), bladeMat);
+    ring1.position.y = 1.92;
+    ring1.rotation.x = 0.5;
+    g.add(ring1);
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 20), guardMat);
+    ring2.position.y = 1.92;
+    ring2.rotation.y = Math.PI / 2;
+    g.add(ring2);
+  } else if (style === 'dragon_blade') {
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.5, 8), handleMat);
+    handle.position.y = 0.08;
+    g.add(handle);
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.14, 0.18), guardMat);
+    guard.position.y = 0.36;
+    g.add(guard);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.34, 1.72, 0.09), bladeMat);
+    blade.position.y = 1.24;
+    g.add(blade);
+    const core = new THREE.Mesh(
+      new THREE.BoxGeometry(0.11, 1.5, 0.12),
+      mat(glow || '#f59e0b', 0.1, 0.3, glow || '#f59e0b', 1.5)
+    );
+    core.position.y = 1.24;
+    g.add(core);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.42, 4), bladeMat);
+    tip.rotation.y = Math.PI / 4;
+    tip.position.y = 2.3;
+    g.add(tip);
   } else if (style === 'rapier') {
     const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 8), handleMat);
     handle.position.y = 0.05;
@@ -1835,7 +1909,845 @@ export function createChimeraModel() {
 }
 
 /**
- * Factory helper to create any mob model by its type key.
+ * Village NPC 2: Legendary Dwarf Blacksmith Brok (Monster Hunter × Baldur's Gate Forge!)
+ */
+export function createBlacksmithNpcModel() {
+  const npc = createCharacterModel(
+    {
+      hairStyle: 'bald',
+      hairColor: '#b45309',
+      skinColor: '#e2a776',
+      eyeStyle: 'sharp',
+      eyeColor: '#f59e0b',
+      earStyle: 'human',
+      faceAccessory: 'beard_full',
+      headgear: 'viking_helm',
+      wingStyle: 'none',
+      outfitPrimary: '#78350f',
+      outfitSecondary: '#fbbf24',
+      cape: false,
+      heightScale: 0.92,
+      bodyWidthScale: 1.28
+    },
+    { style: 'hammer', color: '#f97316', glow: '#fb923c' },
+    { def: 20, tint: '#451a03' }
+  );
+  const label = createNameplateSprite('⚒️ 矮人鐵匠・神兵鍛造 [按 G]', '#fbbf24', false);
+  label.sprite.scale.set(3.4, 0.58, 1);
+  label.sprite.position.set(0, 2.85, 0);
+  npc.group.add(label.sprite);
+  return npc;
+}
+
+/**
+ * Village NPC 3: Baldur's Gate Arcane Sage & Alchemist Gale
+ */
+export function createAlchemistNpcModel() {
+  const npc = createCharacterModel(
+    {
+      hairStyle: 'long',
+      hairColor: '#4c1d95',
+      skinColor: '#f5cfa0',
+      eyeStyle: 'glowing',
+      eyeColor: '#a855f7',
+      earStyle: 'elf',
+      faceAccessory: 'goatee',
+      headgear: 'wizard_hat',
+      wingStyle: 'none',
+      outfitPrimary: '#3b0764',
+      outfitSecondary: '#c084fc',
+      cape: true,
+      capeColor: '#6d28d9',
+      heightScale: 1.05,
+      bodyWidthScale: 0.95
+    },
+    { style: 'tome_staff', color: '#c084fc', glow: '#a855f7' },
+    { def: 10, tint: '#4c1d95' }
+  );
+  const label = createNameplateSprite('🧙 秘法鍊金賢者・秘藥卷軸 [按 G]', '#e879f9', false);
+  label.sprite.scale.set(3.5, 0.58, 1);
+  label.sprite.position.set(0, 3.2, 0);
+  npc.group.add(label.sprite);
+  return npc;
+}
+
+/**
+ * Village NPC 4: World Codex & Bestiary Guide Homer
+ */
+export function createGuideNpcModel() {
+  const npc = createCharacterModel(
+    {
+      hairStyle: 'crown_braid',
+      hairColor: '#e2e8f0',
+      skinColor: '#f5cfa0',
+      eyeStyle: 'normal',
+      eyeColor: '#06b6d4',
+      earStyle: 'elf',
+      faceAccessory: 'glasses',
+      headgear: 'laurel',
+      wingStyle: 'angel',
+      wingColor: '#fef08a',
+      outfitPrimary: '#0369a1',
+      outfitSecondary: '#fef08a',
+      cape: true,
+      capeColor: '#0284c7',
+      heightScale: 1.04,
+      bodyWidthScale: 0.96
+    },
+    { style: 'staff', color: '#38bdf8', glow: '#fde047' },
+    null
+  );
+  const label = createNameplateSprite('📖 世界圖鑑導師・素材掉落表 [按 G]', '#7dd3fc', false);
+  label.sprite.scale.set(3.6, 0.58, 1);
+  label.sprite.position.set(0, 3.1, 0);
+  npc.group.add(label.sprite);
+  return npc;
+}
+
+/**
+ * Ocean Boss 1: Deep-Sea Kraken (Giant Tentacled Squid Monster)
+ */
+export function createKrakenModel() {
+  const g = new THREE.Group();
+  const bodyMat = mat('#7f1d1d', 0.45, 0.2, '#991b1b', 0.35);
+  const suckerMat = mat('#f43f5e', 0.5);
+  const eyeMat = mat('#fef08a', 0.1, 0, '#f59e0b', 2.0);
+
+  // Towering Squid Mantle Head
+  const mantle = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3.6, 14), bodyMat);
+  mantle.position.y = 3.2;
+  mantle.castShadow = true;
+  g.add(mantle);
+
+  const headSphere = new THREE.Mesh(new THREE.SphereGeometry(1.35, 16, 14), bodyMat);
+  headSphere.position.y = 1.65;
+  g.add(headSphere);
+
+  [-0.55, 0.55].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10), eyeMat);
+    eye.position.set(ex, 1.78, 1.15);
+    g.add(eye);
+  });
+
+  // 6 Undulating Kraken Tentacles radiating around base
+  const tentacles = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const pivot = new THREE.Group();
+    pivot.position.set(Math.cos(a) * 1.1, 1.05, Math.sin(a) * 1.1);
+    pivot.rotation.y = -a;
+    const arm = new THREE.Mesh(new THREE.ConeGeometry(0.32, 3.2, 8), i % 2 === 0 ? bodyMat : suckerMat);
+    arm.rotation.z = -Math.PI / 2.6;
+    arm.position.set(1.25, -0.35, 0);
+    pivot.add(arm);
+    g.add(pivot);
+    tentacles.push({ pivot, phase: i * 1.1 });
+  }
+
+  const hpBar = createNameplateSprite('🦑 北海巨妖・深海克拉肯 [Boss Lv.18]', '#fb7185', true);
+  hpBar.sprite.scale.set(4.8, 1.25, 1);
+  hpBar.sprite.position.set(0, 5.4, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 7.5 : 3.2);
+    mantle.rotation.z = Math.sin(clk) * 0.08;
+    tentacles.forEach((t) => {
+      t.pivot.rotation.z = Math.sin(clk * (attacking ? 2.2 : 1.1) + t.phase) * 0.42;
+    });
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Ocean Boss 2: Abyssal Sea Dragon Leviathan
+ */
+export function createLeviathanModel() {
+  const g = new THREE.Group();
+  const scaleMat = mat('#0369a1', 0.3, 0.45, '#0284c7', 0.45);
+  const finMat = mat('#22d3ee', 0.2, 0.3, '#06b6d4', 1.1);
+  const eyeMat = mat('#fef08a', 0.1, 0, '#fde047', 1.8);
+
+  const segments = [];
+  for (let i = 0; i < 6; i++) {
+    const r = 1.25 - i * 0.14;
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), scaleMat);
+    seg.position.set(0, 1.5 + Math.sin(i * 0.9) * 0.45, 2.2 - i * 1.25);
+    seg.castShadow = true;
+    g.add(seg);
+    const fin = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.0, 6), finMat);
+    fin.position.set(0, r + 0.35, 0);
+    seg.add(fin);
+    segments.push({ seg, idx: i });
+  }
+
+  // Sea-Dragon Snout & Horns
+  const head = segments[0].seg;
+  const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.9, 10), scaleMat);
+  jaw.rotation.x = Math.PI / 2;
+  jaw.position.set(0, 0, 1.45);
+  head.add(jaw);
+  [-0.45, 0.45].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), eyeMat);
+    eye.position.set(ex, 0.35, 1.05);
+    head.add(eye);
+  });
+
+  const hpBar = createNameplateSprite('🌊 利維坦・深淵太古海龍 [Boss Lv.21]', '#38bdf8', true);
+  hpBar.sprite.scale.set(5.0, 1.25, 1);
+  hpBar.sprite.position.set(0, 4.6, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 8 : 3.5);
+    segments.forEach((s) => {
+      s.seg.position.x = Math.sin(clk - s.idx * 0.7) * 0.55;
+      s.seg.position.y = 1.55 + Math.cos(clk - s.idx * 0.7) * 0.35 + (attacking && s.idx === 0 ? 0.35 : 0);
+    });
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Frost Peaks Elite: Himalayan Alpine Yeti
+ */
+export function createYetiModel() {
+  const g = new THREE.Group();
+  const furMat = mat('#f1f5f9', 0.8);
+  const iceMat = mat('#38bdf8', 0.2, 0.4, '#0ea5e9', 0.65);
+  const faceMat = mat('#64748b', 0.7);
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 14), furMat);
+  body.scale.set(1.15, 1.25, 1.0);
+  body.position.y = 1.75;
+  body.castShadow = true;
+  g.add(body);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 12), furMat);
+  head.position.set(0, 3.15, 0.2);
+  g.add(head);
+
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), faceMat);
+  face.position.set(0, 3.1, 0.52);
+  g.add(face);
+
+  [-1, 1].forEach((dir) => {
+    const iceHorn = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.85, 8), iceMat);
+    iceHorn.position.set(dir * 0.55, 3.62, 0.15);
+    iceHorn.rotation.z = -dir * 0.45;
+    g.add(iceHorn);
+  });
+
+  const arm = new THREE.Group();
+  arm.position.set(1.25, 2.25, 0.15);
+  const fist = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45, 0), iceMat);
+  fist.position.set(0, -0.65, 0.45);
+  arm.add(fist);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('🦍 喜馬拉雅雪峰巨獸・雪怪 [菁英 Lv.15]', '#bae6fd', true);
+  hpBar.sprite.scale.set(4.4, 1.15, 1);
+  hpBar.sprite.position.set(0, 4.4, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 8 : 2.6);
+    body.position.y = 1.75 + (moving ? Math.abs(Math.sin(clk)) * 0.2 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.4) * 1.6 : Math.sin(clk) * 0.35;
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Reusable Colored Winged Elder Dragon Builder (Frost Wyrm / Storm Dragon)
+ */
+function createElementalDragonModel(bodyColor, wingColor, glowColor, labelText, labelColor, scale = 1.05) {
+  const g = new THREE.Group();
+  const bodyMat = mat(bodyColor, 0.35, 0.45, glowColor, 0.35);
+  const wingMat = mat(wingColor, 0.4, 0.3, glowColor, 0.55);
+  const eyeMat = mat(glowColor, 0.1, 0, glowColor, 2.0);
+
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(1.15, 2.35, 12, 16), bodyMat);
+  torso.rotation.x = Math.PI / 2.2;
+  torso.position.set(0, 2.2, 0);
+  torso.castShadow = true;
+  g.add(torso);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.72, 2.1, 12), bodyMat);
+  neck.position.set(0, 3.35, 1.65);
+  neck.rotation.x = 0.5;
+  g.add(neck);
+
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.75, 1.8, 10), bodyMat);
+  head.rotation.x = Math.PI / 2;
+  head.position.set(0, 4.2, 2.65);
+  g.add(head);
+
+  [-0.3, 0.3].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), eyeMat);
+    eye.position.set(ex, 4.35, 2.9);
+    g.add(eye);
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.14, 1.3, 8), eyeMat);
+    horn.position.set(ex * 1.4, 4.85, 2.05);
+    horn.rotation.x = -0.65;
+    g.add(horn);
+  });
+
+  const wingL = new THREE.Group();
+  wingL.position.set(-1.1, 2.8, 0.2);
+  const wingLMesh = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 2.2), wingMat);
+  wingLMesh.position.x = -2.1;
+  wingL.add(wingLMesh);
+  g.add(wingL);
+
+  const wingR = new THREE.Group();
+  wingR.position.set(1.1, 2.8, 0.2);
+  const wingRMesh = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 2.2), wingMat);
+  wingRMesh.position.x = 2.1;
+  wingR.add(wingRMesh);
+  g.add(wingR);
+
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.55, 3.4, 10), bodyMat);
+  tail.rotation.x = -Math.PI / 2.2;
+  tail.position.set(0, 1.45, -2.9);
+  g.add(tail);
+
+  g.scale.setScalar(scale);
+
+  const hpBar = createNameplateSprite(labelText, labelColor, true);
+  hpBar.sprite.scale.set(5.2, 1.3, 1);
+  hpBar.sprite.position.set(0, 6.2, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 7.5 : 3.2);
+    const flap = Math.sin(clk * 1.5) * 0.45;
+    wingL.rotation.z = 0.25 + flap;
+    wingR.rotation.z = -0.25 - flap;
+    g.position.y = Math.sin(clk) * 0.22 + (attacking ? 0.35 : 0);
+    tail.rotation.z = Math.sin(clk) * 0.25;
+  }
+  return { group: g, hpBar, animate };
+}
+
+export function createFrostWyrmModel() {
+  return createElementalDragonModel('#0284c7', '#bae6fd', '#38bdf8', '❄️ 辛達苟薩・極寒冰霜古龍 [Boss Lv.21]', '#7dd3fc', 1.05);
+}
+
+export function createStormDragonModel() {
+  return createElementalDragonModel('#312e81', '#facc15', '#38bdf8', '⚡ 巴哈姆特・蒼穹雷霆古龍 [Boss Lv.23]', '#fde047', 1.15);
+}
+
+/**
+ * Cthulhu Mythos 1: Innsmouth Deep One Cultist
+ */
+export function createDeepOneModel() {
+  const g = new THREE.Group();
+  const skinMat = mat('#15803d', 0.55, 0.2, '#064e3b', 0.25);
+  const finMat = mat('#22c55e', 0.4);
+  const eyeMat = mat('#fde047', 0.1, 0, '#eab308', 1.8);
+
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.05, 10, 12), skinMat);
+  torso.position.y = 1.25;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12), skinMat);
+  head.scale.set(1.0, 0.9, 1.25);
+  head.position.set(0, 2.08, 0.12);
+  g.add(head);
+
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.72), finMat);
+  fin.position.set(0, 2.48, -0.05);
+  g.add(fin);
+
+  [-0.22, 0.22].forEach((ex) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), eyeMat);
+    eye.position.set(ex, 2.15, 0.48);
+    g.add(eye);
+  });
+
+  const hpBar = createNameplateSprite('🐟 深潛者・魚人邪教徒 [Lv.14]', '#4ade80', true);
+  hpBar.sprite.position.set(0, 3.1, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9.5 : 3);
+    torso.position.y = 1.25 + (moving ? Math.abs(Math.sin(clk)) * 0.15 : 0);
+    if (attacking) head.position.z = 0.12 + Math.sin(clk * 2) * 0.25;
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Cthulhu Mythos 2: Shoggoth (Many-Eyed Protoplasmic Eldritch Horror)
+ */
+export function createShoggothModel() {
+  const g = new THREE.Group();
+  const blobMat = mat('#1e1b4b', 0.35, 0.3, '#581c87', 0.55);
+  const eyeMat = mat('#4ade80', 0.1, 0, '#22c55e', 1.8);
+
+  const core = new THREE.Mesh(new THREE.DodecahedronGeometry(1.65, 1), blobMat);
+  core.position.y = 1.65;
+  core.castShadow = true;
+  g.add(core);
+
+  // 10 Glowing Eldritch Eyes covering the Shoggoth surface!
+  const eyes = [];
+  for (let i = 0; i < 10; i++) {
+    const phi = Math.acos(-1 + (2 * i) / 10);
+    const theta = Math.sqrt(10 * Math.PI) * phi;
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), eyeMat);
+    eye.position.set(
+      1.55 * Math.cos(theta) * Math.sin(phi),
+      1.65 + 1.45 * Math.cos(phi),
+      1.55 * Math.sin(theta) * Math.sin(phi)
+    );
+    g.add(eye);
+    eyes.push(eye);
+  }
+
+  const hpBar = createNameplateSprite('👁️ 修格斯・萬眼原生質魔物 [再生菁英 Lv.18]', '#c084fc', true);
+  hpBar.sprite.scale.set(4.6, 1.2, 1);
+  hpBar.sprite.position.set(0, 3.85, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 7 : 3);
+    core.scale.set(1 + Math.sin(clk) * 0.12, 1 + Math.cos(clk * 1.3) * 0.12, 1 + Math.sin(clk * 0.8) * 0.12);
+    core.rotation.y += dt * (attacking ? 1.8 : 0.6);
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Cthulhu Mythos Boss: Great Old One CTHULHU of R'lyeh!
+ */
+export function createCthulhuModel() {
+  const g = new THREE.Group();
+  const skinMat = mat('#064e3b', 0.5, 0.25, '#047857', 0.4);
+  const wingMat = mat('#1e1b4b', 0.55, 0.2, '#4c1d95', 0.45);
+  const eyeMat = mat('#a3e635', 0.1, 0, '#4ade80', 2.2);
+
+  // Towering Eldritch Titan Body
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.45, 3.1, 16), skinMat);
+  torso.position.y = 2.4;
+  torso.castShadow = true;
+  g.add(torso);
+
+  // Octopoid Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(1.05, 18, 14), skinMat);
+  head.scale.set(0.95, 1.25, 1.05);
+  head.position.set(0, 4.45, 0.2);
+  g.add(head);
+
+  // 6 Glowing Madness Eyes
+  [[-0.42, 4.65], [0.42, 4.65], [-0.24, 4.88], [0.24, 4.88]].forEach(([ex, ey]) => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), eyeMat);
+    eye.position.set(ex, ey, 1.05);
+    g.add(eye);
+  });
+
+  // 6 Writhing Face Tentacles
+  const tentacles = [];
+  for (let i = 0; i < 6; i++) {
+    const tx = (i - 2.5) * 0.28;
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.15, 1.75, 8), skinMat);
+    t.rotation.x = Math.PI + 0.15;
+    t.position.set(tx, 3.45, 0.98);
+    g.add(t);
+    tentacles.push({ t, phase: i * 1.1 });
+  }
+
+  // Enormous Bat-Dragon Eldritch Wings
+  const wingL = new THREE.Mesh(new THREE.ConeGeometry(2.2, 4.4, 5), wingMat);
+  wingL.scale.set(1.3, 1.0, 0.18);
+  wingL.position.set(-2.35, 3.6, -0.75);
+  wingL.rotation.z = 0.85;
+  g.add(wingL);
+
+  const wingR = wingL.clone();
+  wingR.position.x = 2.35;
+  wingR.rotation.z = -0.85;
+  g.add(wingR);
+
+  // Floating Eldritch Sanity Halo
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(1.85, 0.08, 8, 28),
+    mat('#4ade80', 0.1, 0.2, '#22c55e', 1.6)
+  );
+  halo.position.set(0, 5.2, -0.5);
+  g.add(halo);
+
+  const hpBar = createNameplateSprite('🐙 克蘇魯・拉萊耶舊日支配者 [神話終極 Boss Lv.25]', '#4ade80', true);
+  hpBar.sprite.scale.set(5.4, 1.35, 1);
+  hpBar.sprite.position.set(0, 6.75, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 6.5 : 2.8);
+    g.position.y = 0.25 + Math.sin(clk) * 0.22;
+    wingL.rotation.z = 0.85 + Math.sin(clk * 1.3) * 0.25;
+    wingR.rotation.z = -0.85 - Math.sin(clk * 1.3) * 0.25;
+    halo.rotation.z += dt * 1.2;
+    tentacles.forEach((o) => {
+      o.t.rotation.z = Math.sin(clk * (attacking ? 2.6 : 1.4) + o.phase) * 0.35;
+    });
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Japanese Yokai 1: Kurama Great Tengu
+ */
+export function createTenguModel() {
+  const g = new THREE.Group();
+  const robeMat = mat('#f8fafc', 0.65);
+  const redSkin = mat('#dc2626', 0.55);
+  const wingMat = mat('#18181b', 0.6);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.52, 1.3, 14), robeMat);
+  torso.position.y = 1.3;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 12), redSkin);
+  head.position.set(0, 2.18, 0.05);
+  g.add(head);
+
+  // Iconic Long Tengu Nose
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.65, 8), redSkin);
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, 2.15, 0.62);
+  g.add(nose);
+
+  // Black Raven Wings
+  const wingL = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.72, 0.12), wingMat);
+  wingL.position.set(-1.05, 1.85, -0.35);
+  wingL.rotation.z = 0.35;
+  g.add(wingL);
+
+  const wingR = wingL.clone();
+  wingR.position.x = 1.05;
+  wingR.rotation.z = -0.35;
+  g.add(wingR);
+
+  // Giant Red Tengu Leaf Fan (Uchiwa)
+  const fan = new THREE.Mesh(new THREE.CircleGeometry(0.55, 8), mat('#ef4444', 0.4, 0.1, '#dc2626', 0.4));
+  fan.position.set(0.72, 1.65, 0.55);
+  g.add(fan);
+
+  const hpBar = createNameplateSprite('👺 鞍馬山大天狗・疾風劍豪 [妖怪菁英 Lv.15]', '#fca5a5', true);
+  hpBar.sprite.scale.set(4.4, 1.15, 1);
+  hpBar.sprite.position.set(0, 3.25, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 10 : 3.5);
+    g.position.y = 0.32 + Math.sin(clk) * 0.2;
+    wingL.rotation.z = 0.35 + Math.sin(clk * 1.8) * 0.35;
+    wingR.rotation.z = -0.35 - Math.sin(clk * 1.8) * 0.35;
+    if (attacking) fan.rotation.x = Math.sin(clk * 2.5) * 0.85;
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Japanese Yokai Boss 2: Shuten-Doji Oni King
+ */
+export function createShutenDojiModel() {
+  const g = new THREE.Group();
+  const oniSkin = mat('#b91c1c', 0.6);
+  const tigerPelt = mat('#eab308', 0.75);
+  const ironMat = mat('#18181b', 0.35, 0.8);
+  const hornMat = mat('#fef08a', 0.3, 0.4);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.72, 1.75, 16), oniSkin);
+  torso.position.y = 1.85;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const waist = new THREE.Mesh(new THREE.CylinderGeometry(0.76, 0.85, 0.55, 16), tigerPelt);
+  waist.position.y = 1.0;
+  g.add(waist);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 14), oniSkin);
+  head.position.set(0, 3.0, 0.12);
+  g.add(head);
+
+  [-0.28, 0.28].forEach((hx) => {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.85, 10), hornMat);
+    horn.position.set(hx, 3.65, 0.2);
+    horn.rotation.z = hx > 0 ? -0.3 : 0.3;
+    g.add(horn);
+  });
+
+  // Colossal Studded Iron Kanabo Club
+  const arm = new THREE.Group();
+  arm.position.set(1.08, 2.25, 0.2);
+  const kanabo = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.14, 2.85, 10), ironMat);
+  kanabo.rotation.x = Math.PI / 2.2;
+  kanabo.position.set(0, -0.1, 0.95);
+  arm.add(kanabo);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('👹 酒吞童子・大江山百鬼鬼王 [Boss Lv.18]', '#f87171', true);
+  hpBar.sprite.scale.set(4.8, 1.2, 1);
+  hpBar.sprite.position.set(0, 4.5, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 8.5 : 2.8);
+    torso.position.y = 1.85 + (moving ? Math.abs(Math.sin(clk)) * 0.18 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.5) * 1.65 : Math.sin(clk) * 0.35;
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Japanese Yokai Boss 3: Nine-Tailed Kitsune Tamamo-no-Mae (Kyubi — 9 Fanning Glowing Tails!)
+ */
+export function createKyubiModel() {
+  const g = new THREE.Group();
+  const furMat = mat('#fef3c7', 0.45, 0.15, '#fbbf24', 0.35);
+  const tipMat = mat('#ef4444', 0.3, 0.2, '#f97316', 0.85);
+  const fireMat = mat('#38bdf8', 0.1, 0, '#0ea5e9', 2.0);
+
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.68, 1.45, 12, 16), furMat);
+  body.rotation.x = Math.PI / 2;
+  body.position.set(0, 1.25, 0);
+  body.castShadow = true;
+  g.add(body);
+
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.25, 10), furMat);
+  head.rotation.x = Math.PI / 2;
+  head.position.set(0, 1.85, 1.15);
+  g.add(head);
+
+  [-0.28, 0.28].forEach((ex) => {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.62, 6), furMat);
+    ear.position.set(ex, 2.38, 0.72);
+    g.add(ear);
+  });
+
+  // 9 Mystical Fanning Kitsune Tails!
+  const tailsGroup = new THREE.Group();
+  tailsGroup.position.set(0, 1.35, -0.95);
+  const tails = [];
+  for (let i = 0; i < 9; i++) {
+    const angle = ((i - 4) / 4) * 1.15;
+    const tPivot = new THREE.Group();
+    tPivot.rotation.z = angle;
+    const tMesh = new THREE.Mesh(new THREE.ConeGeometry(0.24, 2.55, 8), i % 2 === 0 ? furMat : tipMat);
+    tMesh.position.set(0, 1.35, -0.45);
+    tMesh.rotation.x = -0.35;
+    tPivot.add(tMesh);
+    tailsGroup.add(tPivot);
+    tails.push({ tPivot, base: angle, phase: i * 0.7 });
+  }
+  g.add(tailsGroup);
+
+  // Orbiting Blue Foxfire Orbs
+  const orbRing = new THREE.Group();
+  orbRing.position.y = 2.0;
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), fireMat);
+    orb.position.set(Math.cos(a) * 1.85, 0, Math.sin(a) * 1.85);
+    orbRing.add(orb);
+  }
+  g.add(orbRing);
+
+  const hpBar = createNameplateSprite('🦊 玉藻前・白面金毛九尾妖狐 [狐火 Boss Lv.20]', '#fde047', true);
+  hpBar.sprite.scale.set(5.0, 1.25, 1);
+  hpBar.sprite.position.set(0, 4.35, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 9.5 : 3.5);
+    orbRing.rotation.y += dt * (attacking ? 4.5 : 1.8);
+    tails.forEach((t) => {
+      t.tPivot.rotation.z = t.base + Math.sin(clk + t.phase) * 0.14;
+    });
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Japanese Yokai Boss 4: Yamata no Orochi (5-Headed Mythic Serpent Dragon!)
+ */
+export function createYamataOrochiModel() {
+  const g = new THREE.Group();
+  const bodyMat = mat('#18181b', 0.4, 0.45, '#581c87', 0.45);
+  const accentMat = mat('#991b1b', 0.35, 0.3, '#dc2626', 0.6);
+  const eyeMat = mat('#ef4444', 0.1, 0, '#ef4444', 2.2);
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1.9, 18, 16), bodyMat);
+  body.scale.set(1.25, 0.9, 1.65);
+  body.position.y = 1.65;
+  body.castShadow = true;
+  g.add(body);
+
+  // 5 Towering Snapping Serpent Heads!
+  const heads = [];
+  [-1.65, -0.82, 0, 0.82, 1.65].forEach((ox, idx) => {
+    const ng = new THREE.Group();
+    ng.position.set(ox, 2.35, 1.25);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, 2.4, 10), idx % 2 === 0 ? bodyMat : accentMat);
+    neck.position.set(0, 1.0, 0.55);
+    neck.rotation.x = 0.42;
+    ng.add(neck);
+
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.35, 10), accentMat);
+    head.rotation.x = Math.PI / 2;
+    head.position.set(0, 2.15, 1.25);
+    ng.add(head);
+
+    [-0.16, 0.16].forEach((ex) => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), eyeMat);
+      eye.position.set(ex, 2.3, 1.4);
+      ng.add(eye);
+    });
+    g.add(ng);
+    heads.push({ ng, phase: idx * 1.3 });
+  });
+
+  const hpBar = createNameplateSprite('🐍 八岐大蛇・出雲神話滅世妖龍 [再生炎毒 Boss Lv.24]', '#c084fc', true);
+  hpBar.sprite.scale.set(5.4, 1.35, 1);
+  hpBar.sprite.position.set(0, 5.65, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 7.5 : 3.2);
+    heads.forEach((h) => {
+      h.ng.rotation.y = Math.sin(clk + h.phase) * 0.3;
+      h.ng.rotation.x = attacking ? Math.sin((clk + h.phase) * 2.5) * 0.55 : Math.sin(clk + h.phase) * 0.18;
+    });
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Mayan Culture 1: Obsidian Jaguar Warrior Elite
+ */
+export function createJaguarWarriorModel() {
+  const g = new THREE.Group();
+  const jaguarMat = mat('#ca8a04', 0.65);
+  const jadeMat = mat('#10b981', 0.3, 0.5, '#059669', 0.45);
+  const obsidianMat = mat('#09090b', 0.2, 0.85, '#a855f7', 0.4);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 1.25, 14), jaguarMat);
+  torso.position.y = 1.3;
+  torso.castShadow = true;
+  g.add(torso);
+
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.45, 0.55), jadeMat);
+  chest.position.y = 1.5;
+  g.add(chest);
+
+  const helm = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12), jaguarMat);
+  helm.position.set(0, 2.2, 0.08);
+  g.add(helm);
+
+  // Feathered Mayan Plume Headdress
+  for (let i = -2; i <= 2; i++) {
+    const plume = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.72, 6), jadeMat);
+    plume.position.set(i * 0.14, 2.72, -0.1);
+    plume.rotation.z = -i * 0.22;
+    g.add(plume);
+  }
+
+  // Obsidian Macuahuitl Saw-Blade
+  const arm = new THREE.Group();
+  arm.position.set(0.62, 1.55, 0.15);
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.55, 0.08), obsidianMat);
+  blade.rotation.x = Math.PI / 2.2;
+  blade.position.set(0, 0, 0.75);
+  arm.add(blade);
+  g.add(arm);
+
+  const hpBar = createNameplateSprite('🐆 馬雅黑曜石美洲豹戰士 [菁英 Lv.16]', '#fde047', true);
+  hpBar.sprite.scale.set(4.5, 1.15, 1);
+  hpBar.sprite.position.set(0, 3.45, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 10 : 3);
+    torso.position.y = 1.3 + (moving ? Math.abs(Math.sin(clk)) * 0.16 : 0);
+    arm.rotation.x = attacking ? -Math.sin(clk * 2.6) * 1.55 : Math.sin(clk) * 0.35;
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Mayan Culture Boss: Quetzalcoatl / Kukulkan Feathered Sun Serpent Dragon!
+ */
+export function createQuetzalcoatlModel() {
+  const g = new THREE.Group();
+  const jadeMat = mat('#059669', 0.3, 0.4, '#10b981', 0.55);
+  const goldMat = mat('#fbbf24', 0.2, 0.85, '#f59e0b', 0.65);
+  const crimsonMat = mat('#dc2626', 0.35, 0.2, '#ef4444', 0.65);
+
+  const segments = [];
+  for (let i = 0; i < 7; i++) {
+    const r = 1.18 - i * 0.11;
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 12), i % 2 === 0 ? jadeMat : goldMat);
+    seg.position.set(0, 2.2 + Math.sin(i * 0.85) * 0.5, 2.6 - i * 1.15);
+    seg.castShadow = true;
+    g.add(seg);
+    segments.push({ seg, idx: i });
+  }
+
+  // Radiant Sun-Halo Crest & Feathered Wings on Head
+  const head = segments[0].seg;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const feather = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.35, 6), i % 2 === 0 ? crimsonMat : goldMat);
+    feather.position.set(Math.cos(a) * 1.05, Math.sin(a) * 1.05, -0.1);
+    feather.rotation.z = a - Math.PI / 2;
+    head.add(feather);
+  }
+
+  const wingL = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.18, 1.65), jadeMat);
+  wingL.position.set(-2.2, 0.3, -0.5);
+  segments[1].seg.add(wingL);
+
+  const wingR = wingL.clone();
+  wingR.position.x = 2.2;
+  segments[1].seg.add(wingR);
+
+  const hpBar = createNameplateSprite('🪶 羽蛇神・庫庫爾坎 [馬雅太陽神龍 Boss Lv.23]', '#34d399', true);
+  hpBar.sprite.scale.set(5.2, 1.3, 1);
+  hpBar.sprite.position.set(0, 5.25, 0);
+  g.add(hpBar.sprite);
+
+  let clk = Math.random() * 10;
+  function animate(dt, moving, attacking) {
+    clk += dt * (moving ? 8.5 : 3.5);
+    segments.forEach((s) => {
+      s.seg.position.x = Math.sin(clk - s.idx * 0.65) * 0.65;
+      s.seg.position.y = 2.35 + Math.cos(clk - s.idx * 0.65) * 0.45 + (attacking && s.idx === 0 ? 0.35 : 0);
+    });
+    wingL.rotation.z = Math.sin(clk * 1.7) * 0.48;
+    wingR.rotation.z = -Math.sin(clk * 1.7) * 0.48;
+  }
+  return { group: g, hpBar, animate };
+}
+
+/**
+ * Factory helper to create any of the 28 mob models by its type key.
  */
 export function createMobModelByType(typeKey) {
   if (typeKey === 'goblin') return createGoblinModel();
@@ -1853,5 +2765,19 @@ export function createMobModelByType(typeKey) {
   if (typeKey === 'cerberus') return createCerberusModel();
   if (typeKey === 'chimera') return createChimeraModel();
   if (typeKey === 'hydra') return createHydraModel();
+  if (typeKey === 'kraken') return createKrakenModel();
+  if (typeKey === 'leviathan') return createLeviathanModel();
+  if (typeKey === 'yeti') return createYetiModel();
+  if (typeKey === 'frost_wyrm') return createFrostWyrmModel();
+  if (typeKey === 'storm_dragon') return createStormDragonModel();
+  if (typeKey === 'deep_one') return createDeepOneModel();
+  if (typeKey === 'shoggoth') return createShoggothModel();
+  if (typeKey === 'cthulhu') return createCthulhuModel();
+  if (typeKey === 'tengu') return createTenguModel();
+  if (typeKey === 'shuten_doji') return createShutenDojiModel();
+  if (typeKey === 'kyubi') return createKyubiModel();
+  if (typeKey === 'yamata_orochi') return createYamataOrochiModel();
+  if (typeKey === 'jaguar_warrior') return createJaguarWarriorModel();
+  if (typeKey === 'quetzalcoatl') return createQuetzalcoatlModel();
   return createDragonModel();
 }

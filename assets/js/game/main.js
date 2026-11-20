@@ -7,12 +7,14 @@ import * as THREE from 'three';
 import {
   DEFAULT_APPEARANCE,
   DEFAULT_PLAYER_STATE,
+  MATERIALS,
   SHOP_ITEMS,
   SKILLS,
   ROGUELIKE_PERKS,
   ELDER_SCROLLS,
   ZONES,
   MOB_TYPES,
+  getScaledMobStats,
   expForNextLevel,
   computePlayerStats
 } from './data.js';
@@ -124,6 +126,7 @@ function initGame() {
   const hudAuthBtn = document.getElementById('rpg-auth-btn');
   const hudCustomizeBtn = document.getElementById('rpg-customize-btn');
   const hudBagBtn = document.getElementById('rpg-bag-btn');
+  const hudCodexBtn = document.getElementById('rpg-codex-btn');
   const hudPartyBtn = document.getElementById('rpg-party-btn');
   const hudPartyHud = document.getElementById('rpg-party-hud');
   const hudNetBadge = document.getElementById('rpg-net-badge');
@@ -144,6 +147,9 @@ function initGame() {
   const authDialog = document.getElementById('rpg-auth-dialog');
   const customizerDialog = document.getElementById('rpg-customizer-dialog');
   const shopDialog = document.getElementById('rpg-shop-dialog');
+  const forgeDialog = document.getElementById('rpg-forge-dialog');
+  const alchemistDialog = document.getElementById('rpg-alchemist-dialog');
+  const codexDialog = document.getElementById('rpg-codex-dialog');
   const bagDialog = document.getElementById('rpg-bag-dialog');
   const partyDialog = document.getElementById('rpg-party-dialog');
   const perkDialog = document.getElementById('rpg-perk-dialog');
@@ -168,6 +174,7 @@ function initGame() {
   }
   state.perks = state.perks || {};
   state.scrolls = state.scrolls || [];
+  state.materials = state.materials || {};
 
   let stats = computePlayerStats(state);
   let currentHp = Math.min(state.hp || stats.maxHp, stats.maxHp);
@@ -204,13 +211,15 @@ function initGame() {
   let dodgeAnim = 0;
   const dodgeDir = new THREE.Vector3();
 
-  // --- Three.js Renderer, Scene & Camera ---
+  // --- Three.js Renderer, Scene & Camera (Cinematic ACES Filmic Tone Mapping) ---
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(56, 1, 0.1, 260);
+  const camera = new THREE.PerspectiveCamera(56, 1, 0.1, 420);
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   canvasHost.appendChild(renderer.domElement);
 
   const world = buildWorld(scene);
@@ -356,6 +365,9 @@ function initGame() {
     if ((authDialog && authDialog.open) ||
         (customizerDialog && customizerDialog.open) ||
         (shopDialog && shopDialog.open) ||
+        (forgeDialog && forgeDialog.open) ||
+        (alchemistDialog && alchemistDialog.open) ||
+        (codexDialog && codexDialog.open) ||
         (bagDialog && bagDialog.open) ||
         (partyDialog && partyDialog.open) ||
         (perkDialog && perkDialog.open)) {
@@ -390,7 +402,7 @@ function initGame() {
     } else if (k === '2') {
       usePotion('mp');
     } else if (k === 'g') {
-      if (isNearMerchant()) openShopDialog();
+      if (getNearestNpc()) interactNearestNpc();
       else if (isNearChest()) openCaveTreasureChest();
     }
   });
@@ -418,7 +430,7 @@ function initGame() {
     hudToast.dataset.tone = tone;
     hudToast.hidden = false;
     clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { hudToast.hidden = true; }, 2800);
+    toastTimeout = setTimeout(() => { hudToast.hidden = true; }, 3200);
   }
 
   function spawnFloatingText(worldPos, text, color = '#ffffff', big = false) {
@@ -442,23 +454,50 @@ function initGame() {
     setTimeout(() => el.remove(), 950);
   }
 
-  // --- Monster Spawner & AI ---
+  // --- Monster Spawner & Dynamic Player-Level Adaptive Scaling ---
   const mobs = [];
+
+  function applyScaledStatsToMob(mob, fullHeal = false) {
+    const sc = getScaledMobStats(mob.def, state.level);
+    const prevMax = mob.maxHp || sc.maxHp;
+    const ratio = prevMax > 0 ? Math.min(1, mob.hp / prevMax) : 1;
+    mob.level = sc.level;
+    mob.maxHp = sc.maxHp;
+    mob.atk = sc.atk;
+    mob.expReward = sc.expReward;
+    mob.goldReward = sc.goldReward;
+    mob.regen = sc.regen;
+    mob.hp = fullHeal ? sc.maxHp : Math.max(1, Math.round(sc.maxHp * ratio));
+    mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.level}`, mob.hp / mob.maxHp);
+  }
+
+  function rescaleLivingMobsToPlayerLevel() {
+    mobs.forEach((m) => {
+      if (m.alive) applyScaledStatsToMob(m, m.hp >= (m.maxHp || m.def.maxHp));
+    });
+  }
 
   function spawnMob(typeKey, homeX, homeZ) {
     const def = MOB_TYPES[typeKey];
     const visual = createMobModelByType(typeKey);
+    const sc = getScaledMobStats(def, state.level);
 
     visual.group.position.set(homeX, 0, homeZ);
     scene.add(visual.group);
 
-    mobs.push({
+    const mob = {
       id: `${typeKey}_${mobs.length}`,
       type: typeKey,
       def,
       visual,
       home: new THREE.Vector3(homeX, 0, homeZ),
-      hp: def.maxHp,
+      level: sc.level,
+      maxHp: sc.maxHp,
+      hp: sc.maxHp,
+      atk: sc.atk,
+      expReward: sc.expReward,
+      goldReward: sc.goldReward,
+      regen: sc.regen,
       alive: true,
       respawnTimer: 0,
       atkTimer: 0.4 + Math.random() * 0.8,
@@ -473,26 +512,28 @@ function initGame() {
       burnDmg: 0,
       slowTimer: 0,
       knockVel: new THREE.Vector3()
-    });
+    };
+    mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.level}`, 1);
+    mobs.push(mob);
   }
 
-  // 1. Greenskin Warfront (Goblin Raiders, Orc Berserkers, Ogre Crushers, Forest Trolls)
+  // 1. Greenskin Warfront (Goblins, Orcs, Ogres, Trolls)
   [[38, 16], [46, 14], [36, 26], [44, 32], [54, 15]].forEach(([x, z]) => spawnMob('goblin', x, z));
   [[52, 20], [58, 28], [48, 36], [62, 16]].forEach(([x, z]) => spawnMob('orc', x, z));
   [[62, 24], [56, 38]].forEach(([x, z]) => spawnMob('ogre', x, z));
   [[66, 32], [42, 42]].forEach(([x, z]) => spawnMob('troll', x, z));
 
-  // 2. Zombie Plague Cavern (8 Plague Zombies + 2 Skyrim Draugr Deathlords guarding the Ancient Treasure Chest!)
+  // 2. Zombie Plague Cavern (8 Plague Zombies + 2 Skyrim Draugr Deathlords)
   [[42, -34], [48, -38], [56, -39], [61, -43], [46, -47], [52, -49], [59, -51], [63, -47]].forEach(([x, z]) =>
     spawnMob('zombie', x, z)
   );
   [[50, -43], [57, -46]].forEach(([x, z]) => spawnMob('draugr_lord', x, z));
 
-  // 3. Gnome & Vampire Blood Forest (4 Gnome Bombers + 3 Vampire Progenitors around the Blood Moon Altar)
+  // 3. Gnome & Vampire Blood Forest
   [[-38, 8], [-46, 20], [-36, 24], [-48, 6]].forEach(([x, z]) => spawnMob('gnome', x, z));
   [[-54, 10], [-58, 18], [-62, 12]].forEach(([x, z]) => spawnMob('vampire', x, z));
 
-  // 4. Ancient Greek Temple Ruins & Cretan Labyrinth (2 Centaur War-Archers + 6 Mythic Greek Bosses!)
+  // 4. Ancient Greek Temple Ruins & Cretan Labyrinth (Centaurs + 6 Greek Bosses)
   [[-34, -30], [-46, -28]].forEach(([x, z]) => spawnMob('centaur', x, z));
   spawnMob('minotaur', -43, -40);
   spawnMob('medusa', -63, -42);
@@ -501,8 +542,32 @@ function initGame() {
   spawnMob('chimera', -68, -53);
   spawnMob('hydra', -59, -62);
 
-  // 5. Dragon Volcano Lair (1 Alduin Elder Dragon Boss)
-  spawnMob('dragon', 0, -68);
+  // 5. Dragon Volcano Lair (Alduin Inferno Elder Dragon)
+  spawnMob('dragon', 0, -82);
+
+  // 6. Ocean Abyss & Atlantis Bay (Kraken & Sea Dragon Leviathan)
+  spawnMob('kraken', -13, 90);
+  spawnMob('leviathan', 14, 96);
+
+  // 7. Alpine Frost Peaks & Glacier (Yetis + Frost Wyrm + Storm Elder Dragon)
+  [[92, -92], [116, -86]].forEach(([x, z]) => spawnMob('yeti', x, z));
+  spawnMob('frost_wyrm', 102, -106);
+  spawnMob('storm_dragon', 120, -114);
+
+  // 8. Cthulhu R'lyeh Eldritch Abyss (Deep Ones + Shoggoth + Great Old One Cthulhu!)
+  [[-90, 82], [-96, 104], [-118, 84]].forEach(([x, z]) => spawnMob('deep_one', x, z));
+  spawnMob('shoggoth', -106, 78);
+  spawnMob('cthulhu', -114, 98);
+
+  // 9. Japanese Yokai Shrine (Great Tengus + Shuten-Doji + Nine-Tailed Kyubi + Yamata no Orochi!)
+  [[102, 8], [108, 28]].forEach(([x, z]) => spawnMob('tengu', x, z));
+  spawnMob('shuten_doji', 116, 4);
+  spawnMob('kyubi', 126, 26);
+  spawnMob('yamata_orochi', 132, 15);
+
+  // 10. Mayan Golden Pyramid (Obsidian Jaguar Warriors + Quetzalcoatl Feathered Sun Dragon!)
+  [[90, 92], [96, 114]].forEach(([x, z]) => spawnMob('jaguar_warrior', x, z));
+  spawnMob('quetzalcoatl', 112, 104);
 
   function isInSafeZone(pos) {
     const dx = pos.x - ZONES.village.center.x;
@@ -510,8 +575,27 @@ function initGame() {
     return Math.hypot(dx, dz) <= ZONES.village.radius;
   }
 
-  function isNearMerchant() {
-    return playerRoot.position.distanceTo(world.merchantPos) <= 5.2;
+  function getNearestNpc() {
+    if (!world.npcs) return null;
+    let best = null;
+    let bestDist = 5.4;
+    for (const npc of world.npcs) {
+      const d = playerRoot.position.distanceTo(npc.pos);
+      if (d < bestDist) {
+        bestDist = d;
+        best = npc;
+      }
+    }
+    return best;
+  }
+
+  function interactNearestNpc() {
+    const npc = getNearestNpc();
+    if (!npc) return;
+    if (npc.id === 'merchant') openShopDialog();
+    else if (npc.id === 'blacksmith') openForgeDialog();
+    else if (npc.id === 'alchemist') openAlchemistDialog();
+    else if (npc.id === 'guide') openCodexDialog();
   }
 
   function isNearChest() {
@@ -639,9 +723,13 @@ function initGame() {
     }
     chestCooldown = 38;
     if (!state.scrolls) state.scrolls = [];
+    if (!state.materials) state.materials = {};
 
-    const bonusGold = Math.round((240 + Math.random() * 160) * (stats.goldExpMult || 1));
+    const bonusGold = Math.round((320 + Math.random() * 200) * (stats.goldExpMult || 1));
     state.gold += bonusGold;
+
+    // Guaranteed Monster Hunter / Baldur's Gate rare crafting ore from the Cave Chest!
+    state.materials.balduran_mithral = (state.materials.balduran_mithral || 0) + 1;
 
     // Grant an uncollected Elder Scroll if available
     const remainingScrolls = ELDER_SCROLLS.filter((s) => !state.scrolls.includes(s.id));
@@ -650,12 +738,12 @@ function initGame() {
       const picked = remainingScrolls[Math.floor(Math.random() * remainingScrolls.length)];
       state.scrolls.push(picked.id);
       stats = computePlayerStats(state);
-      scrollMsg = `，並發現了傳說秘寶 ${picked.name}（${picked.bonusDesc}）！`;
+      scrollMsg = `、${picked.name}`;
     }
 
     vfx.spawnWaterWave(world.chestPos, 6.5);
-    spawnFloatingText(world.chestPos, `📦 +${bonusGold} G!`, '#fde047', true);
-    showToast(`📦 開啟上古秘寶箱！獲得 ${bonusGold} 金幣${scrollMsg}`, 'success');
+    spawnFloatingText(world.chestPos, `📦 +${bonusGold}G +✨柏德安秘銀!`, '#fde047', true);
+    showToast(`📦 開啟上古秘寶箱！獲得 ${bonusGold} 金幣、✨柏德安秘銀礦石 ×1${scrollMsg}！`, 'success');
 
     pendingPerkPicks += 1;
     renderPerksStrip();
@@ -677,12 +765,39 @@ function initGame() {
     state.exp += finalExp;
     state.kills[mobType] = (state.kills[mobType] || 0) + 1;
 
+    // Monster Hunter × Baldur's Gate Material Drops!
+    if (!state.materials) state.materials = {};
+    const mobDef = MOB_TYPES[mobType];
+    const droppedNames = [];
+    if (mobDef && mobDef.drops) {
+      const dropMult = stats.dropRateMult || 1.0;
+      mobDef.drops.forEach((d) => {
+        if (Math.random() < d.chance * dropMult) {
+          state.materials[d.id] = (state.materials[d.id] || 0) + 1;
+          const mInfo = MATERIALS[d.id];
+          if (mInfo) droppedNames.push(mInfo.name);
+        }
+      });
+    }
+
     spawnFloatingText(
       worldPos || playerRoot.position,
       shared ? `🤝 +${finalGold}G +${finalExp}EXP` : `+${finalGold}G +${finalExp}EXP`,
       '#fde047',
       isBoss
     );
+    if (droppedNames.length > 0) {
+      spawnFloatingText(
+        (worldPos || playerRoot.position).clone().add(new THREE.Vector3(0, 1.1, 0)),
+        `🎁 ${droppedNames.join(' ')}`,
+        '#c084fc',
+        true
+      );
+      if (!isBoss) {
+        showToast(`🎁 狩獵素材獲得：${droppedNames.join('、')}（可至精靈村矮人鐵匠鍛造神兵！）`, 'success');
+      }
+      triggerAutoSave();
+    }
 
     let leveledUp = false;
     while (state.exp >= expForNextLevel(state.level)) {
@@ -695,14 +810,16 @@ function initGame() {
       stats = computePlayerStats(state);
       currentHp = stats.maxHp;
       currentMp = stats.maxMp;
+      rescaleLivingMobsToPlayerLevel();
       vfx.spawnWaterWave(playerRoot.position, 5.5);
-      showToast(`🎉 恭喜升級！目前等級 Lv.${state.level}（請選擇一項上古肉鴿祝福）`, 'success');
+      showToast(`🎉 升級至 Lv.${state.level}！世界怪物已自適應強化（請選擇肉鴿祝福）`, 'success');
       openNextPerkDialog();
     }
 
     if (isBoss) {
       pendingPerkPicks += 1;
-      showToast(`🏆 擊敗世界王【${mobName}】！獲得 ${finalGold} 金幣與額外肉鴿祝福！`, 'success');
+      const matTxt = droppedNames.length > 0 ? `、稀有素材【${droppedNames.join('、')}】` : '';
+      showToast(`🏆 擊敗神話 Boss【${mobName}】！獲得 ${finalGold} 金幣${matTxt}與額外肉鴿祝福！`, 'success');
       openNextPerkDialog();
       triggerAutoSave();
     } else if (leveledUp) {
@@ -714,9 +831,13 @@ function initGame() {
   function applyDamageToMob(mob, rawDmg, color = '#fef08a', isCrit = false, statusEffects = null, fromRemoteUid = null) {
     if (!mob.alive) return;
     let scaledDmg = rawDmg;
-    // Dawnbreaker bonus (+60% damage against Undead: Zombies & Vampires)
+    // Dawnbreaker / Lathander bonus against Undead
     if (!fromRemoteUid && mob.def.undead && stats.weapon && stats.weapon.undeadSlayer) {
-      scaledDmg *= 1.6;
+      scaledDmg *= stats.weapon.undeadSlayer;
+    }
+    // Balduran's Giantslayer / Kusanagi / Fatalis bonus against Bosses & MiniBosses
+    if (!fromRemoteUid && (mob.def.isBoss || mob.def.isMiniBoss) && stats.bossSlayerMult > 1) {
+      scaledDmg *= stats.bossSlayerMult;
     }
     const dmg = Math.max(1, Math.round(scaledDmg * (0.9 + Math.random() * 0.2)));
 
@@ -733,8 +854,10 @@ function initGame() {
       return;
     }
 
+    const maxHp = mob.maxHp || mob.def.maxHp;
+    const lvl = mob.level || mob.def.level;
     mob.hp = Math.max(0, mob.hp - dmg);
-    mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
+    mob.visual.hpBar.redraw(`${mob.def.name} Lv.${lvl}`, mob.hp / maxHp);
     spawnFloatingText(mob.visual.group.position, isCrit ? `💥 ${dmg}!` : `${dmg}`, color, isCrit);
 
     if (statusEffects) {
@@ -755,6 +878,9 @@ function initGame() {
       mob.respawnTimer = mob.def.respawnTime;
       mob.visual.group.visible = false;
 
+      const expR = mob.expReward || mob.def.expReward;
+      const goldR = mob.goldReward || mob.def.goldReward;
+
       const killerUid = fromRemoteUid || net.uid;
       const killerPartyId = fromRemoteUid
         ? ((remoteAvatars.get(fromRemoteUid) && remoteAvatars.get(fromRemoteUid).data && remoteAvatars.get(fromRemoteUid).data.partyId) || null)
@@ -768,8 +894,8 @@ function initGame() {
           killerPartyId,
           mob.visual.group.position.x,
           mob.visual.group.position.z,
-          mob.def.expReward,
-          mob.def.goldReward
+          expR,
+          goldR
         );
       }
 
@@ -780,8 +906,8 @@ function initGame() {
           mob.def.name,
           !!mob.def.isBoss,
           mob.visual.group.position,
-          mob.def.expReward,
-          mob.def.goldReward,
+          expR,
+          goldR,
           killerUid !== net.uid
         );
       }
@@ -1251,7 +1377,11 @@ function initGame() {
     }
     hudZone.textContent = label;
     if (hudShopPrompt) {
-      hudShopPrompt.hidden = !isNearMerchant();
+      const nearNpc = getNearestNpc();
+      hudShopPrompt.hidden = !nearNpc;
+      if (nearNpc) {
+        hudShopPrompt.textContent = nearNpc.label;
+      }
     }
     if (hudChestPrompt) {
       const near = isNearChest();
@@ -1259,7 +1389,7 @@ function initGame() {
       if (near) {
         hudChestPrompt.textContent = chestCooldown > 0
           ? `📦 上古秘寶箱重聚中 (${Math.ceil(chestCooldown)}s)`
-          : '📦 按 G 開啟【山洞上古秘寶箱】（金幣 / 上古卷軸 / 肉鴿祝福）';
+          : '📦 按 G 開啟【山洞上古秘寶箱】（金幣 / 柏德安秘銀 / 上古卷軸 / 肉鴿祝福）';
       }
     }
   }
@@ -1270,22 +1400,27 @@ function initGame() {
     const h = minimapCanvas.height;
     const cx = w / 2;
     const cy = h / 2;
-    const scale = 0.56;
+    const scale = 0.28;
 
     minimapCtx.clearRect(0, 0, w, h);
-    minimapCtx.fillStyle = 'rgba(15, 18, 38, 0.85)';
+    minimapCtx.fillStyle = 'rgba(11, 15, 34, 0.88)';
     minimapCtx.beginPath();
     minimapCtx.arc(cx, cy, cx - 2, 0, Math.PI * 2);
     minimapCtx.fill();
 
-    // Zones
+    // 11 World Biomes
     const zoneColors = {
-      village: 'rgba(16, 185, 129, 0.35)',
-      greenskinWarfront: 'rgba(180, 83, 9, 0.35)',
-      zombieCavern: 'rgba(132, 204, 22, 0.36)',
-      gnomeForest: 'rgba(147, 51, 234, 0.35)',
+      village: 'rgba(16, 185, 129, 0.42)',
+      greenskinWarfront: 'rgba(180, 83, 9, 0.36)',
+      zombieCavern: 'rgba(132, 204, 22, 0.38)',
+      gnomeForest: 'rgba(147, 51, 234, 0.36)',
       greekPantheon: 'rgba(250, 204, 21, 0.38)',
-      dragonLair: 'rgba(239, 68, 68, 0.4)'
+      dragonLair: 'rgba(239, 68, 68, 0.42)',
+      oceanAbyss: 'rgba(14, 165, 233, 0.42)',
+      frostPeaks: 'rgba(226, 232, 240, 0.42)',
+      cthulhuRlyeh: 'rgba(34, 197, 94, 0.36)',
+      yokaiShrine: 'rgba(244, 114, 182, 0.42)',
+      mayanTemple: 'rgba(245, 158, 11, 0.4)'
     };
     Object.values(ZONES).forEach((z) => {
       minimapCtx.fillStyle = zoneColors[z.id] || 'rgba(255,255,255,0.15)';
@@ -1297,18 +1432,18 @@ function initGame() {
     // Cave Treasure Chest marker
     if (world.chestPos) {
       minimapCtx.fillStyle = chestCooldown <= 0 ? '#fde047' : '#64748b';
-      minimapCtx.fillRect(cx + world.chestPos.x * scale - 2.5, cy + world.chestPos.z * scale - 2.5, 5, 5);
+      minimapCtx.fillRect(cx + world.chestPos.x * scale - 2.2, cy + world.chestPos.z * scale - 2.2, 4.4, 4.4);
     }
 
     // Living mobs
     mobs.forEach((m) => {
       if (!m.alive) return;
-      minimapCtx.fillStyle = m.def.isBoss ? '#ef4444' : '#fbbf24';
+      minimapCtx.fillStyle = m.def.isBoss ? '#ef4444' : m.def.isMiniBoss ? '#f97316' : '#fbbf24';
       minimapCtx.beginPath();
       minimapCtx.arc(
         cx + m.visual.group.position.x * scale,
         cy + m.visual.group.position.z * scale,
-        m.def.isBoss ? 4 : 2.3,
+        m.def.isBoss ? 3.2 : 1.9,
         0,
         Math.PI * 2
       );
@@ -1443,7 +1578,8 @@ function initGame() {
             ...clone(DEFAULT_PLAYER_STATE),
             ...res.data.state,
             perks: { ...(res.data.state.perks || {}) },
-            scrolls: [...(res.data.state.scrolls || [])]
+            scrolls: [...(res.data.state.scrolls || [])],
+            materials: { ...(res.data.state.materials || {}) }
           };
         }
         stats = computePlayerStats(state);
@@ -1452,6 +1588,7 @@ function initGame() {
 
         syncNicknameToChat(playerNickname);
         rebuildPlayerMesh();
+        rescaleLivingMobsToPlayerLevel();
         renderPerksStrip();
         updateHud();
         if (!net.isConnected()) {
@@ -1658,7 +1795,7 @@ function initGame() {
     shopListEl.textContent = '';
 
     Object.values(SHOP_ITEMS)
-      .filter((it) => it.category === activeShopCat && it.price > 0)
+      .filter((it) => !it.craftOnly && it.category === activeShopCat && it.price > 0)
       .forEach((item) => {
         const owned = item.category !== 'consumable' && state.ownedItems.includes(item.id);
         const card = document.createElement('div');
@@ -1685,7 +1822,7 @@ function initGame() {
         if (btn && !owned) {
           btn.addEventListener('click', () => {
             if (state.gold < item.price) {
-              showToast('💰 金幣不足！去野外打哥布林或地精賺金幣吧', 'warn');
+              showToast('💰 金幣不足！快去野外狩獵魔物賺取賞金吧', 'warn');
               return;
             }
             state.gold -= item.price;
@@ -1711,6 +1848,7 @@ function initGame() {
 
   function openShopDialog() {
     if (!shopDialog) return;
+    clearAllMovementKeys();
     renderShopList();
     shopDialog.showModal();
   }
@@ -1723,9 +1861,217 @@ function initGame() {
     });
   });
 
-  if (hudShopPrompt) hudShopPrompt.addEventListener('click', openShopDialog);
+  if (hudShopPrompt) hudShopPrompt.addEventListener('click', interactNearestNpc);
   const shopCloseBtn = document.getElementById('rpg-shop-close');
   if (shopCloseBtn && shopDialog) shopCloseBtn.addEventListener('click', () => shopDialog.close());
+
+  // --- Dialog 3B: Dwarf Blacksmith Forge (Monster Hunter × Baldur's Gate Material Crafting!) ---
+  const forgeListEl = document.getElementById('rpg-forge-list');
+  const forgeGoldEl = document.getElementById('rpg-forge-gold');
+  const forgeTabs = document.querySelectorAll('.rpg-forge-tab');
+  let activeForgeCat = 'weapon';
+
+  function renderForgeList() {
+    if (!forgeListEl) return;
+    if (forgeGoldEl) forgeGoldEl.textContent = `${state.gold} G`;
+    forgeListEl.textContent = '';
+    if (!state.materials) state.materials = {};
+
+    Object.values(SHOP_ITEMS)
+      .filter((it) => it.craftOnly && it.category === activeForgeCat)
+      .forEach((item) => {
+        const owned = state.ownedItems.includes(item.id);
+        const recipeEntries = Object.entries(item.recipe || {});
+        const hasMaterials = recipeEntries.every(([mId, req]) => (state.materials[mId] || 0) >= req);
+        const hasGold = state.gold >= (item.craftGold || 0);
+        const canCraft = !owned && hasMaterials && hasGold;
+
+        const card = document.createElement('div');
+        card.className = `rpg-item-card${item.rarity ? ` rarity-${item.rarity}` : ''}`;
+
+        const statLine = item.category === 'weapon'
+          ? `攻擊 +${item.atk}${item.bonusMp ? ` · 魔力 +${item.bonusMp}` : ''}${item.lifestealBonus ? ` · 吸血 ${Math.round(item.lifestealBonus * 100)}%` : ''}${item.bossSlayer ? ` · 對Boss ${Math.round(item.bossSlayer * 100)}%` : ''}`
+          : `防禦 +${item.def} · 血量 +${item.bonusHp}${item.passiveRegen ? ` · 回血 +${item.passiveRegen}/s` : ''}${item.speedBonus ? ` · 移速 +${Math.round(item.speedBonus * 100)}%` : ''}`;
+
+        const chipsHtml = recipeEntries.map(([mId, req]) => {
+          const have = state.materials[mId] || 0;
+          const mDef = MATERIALS[mId];
+          const ok = have >= req;
+          return `<span class="rpg-mat-chip ${ok ? 'ok' : 'miss'}">${mDef ? mDef.name : mId} ${have}/${req}</span>`;
+        }).join('');
+
+        card.innerHTML = `
+          <div class="rpg-item-info">
+            <div class="rpg-item-name">${item.name}</div>
+            <div class="rpg-item-stat">${statLine}</div>
+            <div class="rpg-item-desc">${item.desc}</div>
+            <div class="rpg-recipe-chips">${chipsHtml}<span class="rpg-mat-chip ${hasGold ? 'ok' : 'miss'}">💰 鍛造費 ${item.craftGold} G</span></div>
+          </div>
+          <button type="button" class="rpg-buy-btn" ${owned || !canCraft ? 'disabled' : ''}>
+            ${owned ? '已鍛造' : (canCraft ? '⚒️ 立即鍛造' : '素材不足')}
+          </button>
+        `;
+
+        const btn = card.querySelector('.rpg-buy-btn');
+        if (btn && canCraft) {
+          btn.addEventListener('click', () => {
+            state.gold -= (item.craftGold || 0);
+            recipeEntries.forEach(([mId, req]) => {
+              state.materials[mId] = Math.max(0, (state.materials[mId] || 0) - req);
+            });
+            state.ownedItems.push(item.id);
+            if (item.category === 'weapon') state.weaponId = item.id;
+            if (item.category === 'armor') state.armorId = item.id;
+            rebuildPlayerMesh();
+            currentHp = Math.min(stats.maxHp, currentHp + (item.bonusHp || 0));
+            vfx.spawnWaterWave(playerRoot.position, 6.5);
+            showToast(`⚒️ 傳奇鍛造成功！已裝備【${item.name}】！`, 'success');
+            updateHud();
+            renderForgeList();
+            triggerAutoSave();
+          });
+        }
+        forgeListEl.appendChild(card);
+      });
+  }
+
+  function openForgeDialog() {
+    if (!forgeDialog) return;
+    clearAllMovementKeys();
+    renderForgeList();
+    forgeDialog.showModal();
+  }
+
+  forgeTabs.forEach((t) => {
+    t.addEventListener('click', () => {
+      activeForgeCat = t.dataset.cat;
+      forgeTabs.forEach((b) => b.classList.toggle('active', b === t));
+      renderForgeList();
+    });
+  });
+  const forgeCloseBtn = document.getElementById('rpg-forge-close');
+  if (forgeCloseBtn && forgeDialog) forgeCloseBtn.addEventListener('click', () => forgeDialog.close());
+
+  // --- Dialog 3C: Baldur's Gate Alchemist Sage ---
+  const alchemistListEl = document.getElementById('rpg-alchemist-list');
+  const alchemistGoldEl = document.getElementById('rpg-alchemist-gold');
+
+  function renderAlchemistList() {
+    if (!alchemistListEl) return;
+    if (alchemistGoldEl) alchemistGoldEl.textContent = `${state.gold} G`;
+    alchemistListEl.textContent = '';
+
+    Object.values(SHOP_ITEMS)
+      .filter((it) => it.category === 'alchemist')
+      .forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'rpg-item-card rarity-epic';
+        card.innerHTML = `
+          <div class="rpg-item-info">
+            <div class="rpg-item-name">${item.name}</div>
+            <div class="rpg-item-desc">${item.desc}</div>
+          </div>
+          <button type="button" class="rpg-buy-btn">${item.price} G 購買</button>
+        `;
+        const btn = card.querySelector('.rpg-buy-btn');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            if (state.gold < item.price) {
+              showToast('💰 金幣不足！去狩獵 Boss 賺取更多金幣吧', 'warn');
+              return;
+            }
+            state.gold -= item.price;
+            if (item.instantEffect === 'grant_perk') {
+              alchemistDialog.close();
+              pendingPerkPicks += 1;
+              showToast('🔮 使用秘法重鑄卷軸！請選擇一項肉鴿賜福！', 'success');
+              openNextPerkDialog();
+            } else if (item.instantEffect === 'grant_mithral') {
+              if (!state.materials) state.materials = {};
+              state.materials.balduran_mithral = (state.materials.balduran_mithral || 0) + 1;
+              showToast('✨ 獲得稀世素材【柏德安秘銀礦石 ×1】！', 'success');
+            } else if (item.potionKey) {
+              state.potions[item.potionKey] = (state.potions[item.potionKey] || 0) + (item.grantCount || 1);
+              showToast(`🍷 購買成功：生命聖水 +${item.grantCount || 1} 瓶！`, 'success');
+            }
+            updateHud();
+            renderAlchemistList();
+            triggerAutoSave();
+          });
+        }
+        alchemistListEl.appendChild(card);
+      });
+  }
+
+  function openAlchemistDialog() {
+    if (!alchemistDialog) return;
+    clearAllMovementKeys();
+    renderAlchemistList();
+    alchemistDialog.showModal();
+  }
+  const alchemistCloseBtn = document.getElementById('rpg-alchemist-close');
+  if (alchemistCloseBtn && alchemistDialog) alchemistCloseBtn.addEventListener('click', () => alchemistDialog.close());
+
+  // --- Dialog 3D: World Codex & Monster Hunter Materials Pouch ---
+  const codexListEl = document.getElementById('rpg-codex-list');
+  const codexTabs = document.querySelectorAll('.rpg-codex-tab');
+  let activeCodexTab = 'materials';
+
+  function renderCodexList() {
+    if (!codexListEl) return;
+    codexListEl.textContent = '';
+    if (!state.materials) state.materials = {};
+
+    if (activeCodexTab === 'materials') {
+      Object.values(MATERIALS).forEach((m) => {
+        const qty = state.materials[m.id] || 0;
+        const card = document.createElement('div');
+        card.className = `rpg-item-card${m.rarity === 'mythic' ? ' rarity-mythic' : m.rarity === 'epic' ? ' rarity-epic' : ''}`;
+        card.innerHTML = `
+          <div class="rpg-item-info">
+            <div class="rpg-item-name">${m.name}</div>
+            <div class="rpg-item-desc">掉落來源：${m.source}</div>
+          </div>
+          <span class="rpg-mat-qty-pill">持有 ×${qty}</span>
+        `;
+        codexListEl.appendChild(card);
+      });
+    } else {
+      Object.values(ZONES).forEach((z) => {
+        const dirX = z.center.x > 15 ? '東' : z.center.x < -15 ? '西' : '';
+        const dirZ = z.center.z > 15 ? '南' : z.center.z < -15 ? '北' : '';
+        const compass = (!dirX && !dirZ) ? '地圖中央' : `地圖${dirX}${dirZ}方`;
+        const card = document.createElement('div');
+        card.className = 'rpg-item-card';
+        card.innerHTML = `
+          <div class="rpg-item-info">
+            <div class="rpg-item-name">${z.name}</div>
+            <div class="rpg-item-desc">方位：${compass} · 座標 (${z.center.x}, ${z.center.z})</div>
+          </div>
+          <span class="rpg-mat-qty-pill">${z.safe ? '安全區' : '危險狩獵區'}</span>
+        `;
+        codexListEl.appendChild(card);
+      });
+    }
+  }
+
+  function openCodexDialog() {
+    if (!codexDialog) return;
+    clearAllMovementKeys();
+    renderCodexList();
+    codexDialog.showModal();
+  }
+
+  if (hudCodexBtn) hudCodexBtn.addEventListener('click', openCodexDialog);
+  codexTabs.forEach((t) => {
+    t.addEventListener('click', () => {
+      activeCodexTab = t.dataset.tab;
+      codexTabs.forEach((b) => b.classList.toggle('active', b === t));
+      renderCodexList();
+    });
+  });
+  const codexCloseBtn = document.getElementById('rpg-codex-close');
+  if (codexCloseBtn && codexDialog) codexCloseBtn.addEventListener('click', () => codexDialog.close());
 
   // --- Dialog 4: Inventory / Equipment Bag ---
   const bagListEl = document.getElementById('rpg-bag-list');
@@ -2157,7 +2503,8 @@ function initGame() {
           ...clone(DEFAULT_PLAYER_STATE),
           ...restored.state,
           perks: { ...(restored.state.perks || {}) },
-          scrolls: [...(restored.state.scrolls || [])]
+          scrolls: [...(restored.state.scrolls || [])],
+          materials: { ...(restored.state.materials || {}) }
         };
       }
       stats = computePlayerStats(state);
@@ -2165,6 +2512,7 @@ function initGame() {
       currentMp = Math.min(state.mp || stats.maxMp, stats.maxMp);
       syncNicknameToChat(playerNickname);
       rebuildPlayerMesh();
+      rescaleLivingMobsToPlayerLevel();
       renderPerksStrip();
       updateHud();
       net.connect(buildMyNetworkSnapshot());
@@ -2370,10 +2718,10 @@ function initGame() {
       }
 
       playerRoot.position.add(move);
-      // Clamp within world boundary
+      // Clamp within expanded 11-biome world boundary (±225m)
       const distFromOrigin = Math.hypot(playerRoot.position.x, playerRoot.position.z);
-      if (distFromOrigin > 118) {
-        playerRoot.position.multiplyScalar(118 / distFromOrigin);
+      if (distFromOrigin > 225) {
+        playerRoot.position.multiplyScalar(225 / distFromOrigin);
       }
 
       const isMoving = move.lengthSq() > 0.0001;
@@ -2391,7 +2739,7 @@ function initGame() {
       avatar.model.animate(dt, isRmMoving, avatar.attackAnim, 0, !!(avatar.data && avatar.data.shield));
     });
 
-    // Monster AI Loop (Host runs authoritative AI; non-host smoothly interpolates synced mobs)
+    // Monster AI Loop (Host runs authoritative AI with Dynamic Level Scaling)
     const runLocalMobAi = !net.isConnected() || net.isHost();
     const playerInSafe = isInSafeZone(playerRoot.position);
     mobs.forEach((mob) => {
@@ -2409,21 +2757,25 @@ function initGame() {
         mob.respawnTimer -= dt;
         if (mob.respawnTimer <= 0) {
           mob.alive = true;
-          mob.hp = mob.def.maxHp;
           mob.burnTimer = 0;
           mob.slowTimer = 0;
           mob.dashBoostTimer = 0;
           mob.visual.group.position.copy(mob.home);
           mob.visual.group.visible = true;
-          mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, 1);
+          applyScaledStatsToMob(mob, true);
         }
         return;
       }
 
-      // Forest Troll & Hydra Natural Regeneration (suppressed while burning with Fire!)
-      if (mob.def.regen && mob.burnTimer <= 0 && mob.hp < mob.def.maxHp) {
-        mob.hp = Math.min(mob.def.maxHp, mob.hp + mob.def.regen * dt);
-        mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
+      const mobMaxHp = mob.maxHp || mob.def.maxHp;
+      const mobAtk = mob.atk || mob.def.atk;
+      const mobLvl = mob.level || mob.def.level;
+      const mobRegen = mob.regen || mob.def.regen || 0;
+
+      // Natural Regeneration (Troll / Hydra / Shoggoth / Yamata no Orochi — suppressed by Fire!)
+      if (mobRegen > 0 && mob.burnTimer <= 0 && mob.hp < mobMaxHp) {
+        mob.hp = Math.min(mobMaxHp, mob.hp + mobRegen * dt);
+        mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mobLvl}`, mob.hp / mobMaxHp);
       }
 
       // Burn DoT
@@ -2451,71 +2803,101 @@ function initGame() {
       let moving = false;
       let attacking = false;
 
-      // Orc Berserker & Minotaur Enrage below 55% HP
-      const isEnraged = (mob.type === 'orc' || mob.type === 'minotaur' || mob.type === 'cerberus') && mob.hp < mob.def.maxHp * 0.55;
+      // Enrage below 55% HP for berserker bosses/elites
+      const isEnraged = (mob.def.enrage || mob.type === 'cerberus') && mob.hp < mobMaxHp * 0.55;
 
-      if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 54) {
+      if (!isDead && !playerInSafe && distToPlayer <= mob.def.aggroRange && distToHome < 58) {
         // Face player
         const toPlayer = new THREE.Vector3().subVectors(playerRoot.position, pos);
         toPlayer.y = 0;
         const dirToPlayer = toPlayer.clone().normalize();
         mob.visual.group.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
 
-        // 1. Special Boss / Elite Skill: Minotaur & Orc Dash Charge!
+        // 1. Dash Charge Skill (Minotaur / Orc / Shuten-Doji / Jaguar Warrior)
         if (mob.def.chargeCooldown) {
           mob.chargeTimer -= dt;
-          if (mob.chargeTimer <= 0 && distToPlayer >= 3.2 && distToPlayer <= 16) {
+          if (mob.chargeTimer <= 0 && distToPlayer >= 3.2 && distToPlayer <= 18) {
             mob.chargeTimer = mob.def.chargeCooldown;
             mob.dashBoostTimer = 0.95;
-            spawnFloatingText(pos, mob.type === 'minotaur' ? '🐂 蠻牛衝鋒!' : '🪓 狂暴躍擊!', '#fb923c', true);
-            vfx.spawnEarthSpikes(pos, dirToPlayer, 4.5);
+            const callout = mob.type === 'minotaur'
+              ? '🐂 蠻牛衝鋒!'
+              : mob.type === 'shuten_doji'
+                ? '👹 鬼王衝擊!'
+                : mob.type === 'jaguar_warrior'
+                  ? '🐆 美洲豹撲殺!'
+                  : '🪓 狂暴躍擊!';
+            spawnFloatingText(pos, callout, '#fb923c', true);
+            vfx.spawnEarthSpikes(pos, dirToPlayer, 4.8);
           }
         }
 
-        // 2. Special Elite Skill: Skyrim Draugr Deathlord Dragon Shout (Fus Ro Dah!)
+        // 2. Sonic / Madness / Gale Shout (Draugr / Cthulhu / Tengu / Storm Dragon)
         if (mob.def.shoutCooldown) {
           mob.shoutTimer -= dt;
-          if (mob.shoutTimer <= 0 && distToPlayer <= 13) {
+          if (mob.shoutTimer <= 0 && distToPlayer <= 15) {
             mob.shoutTimer = mob.def.shoutCooldown;
-            vfx.spawnDragonShout(pos, dirToPlayer, 12);
-            spawnFloatingText(pos, '🗣️ FUS RO DAH!', '#38bdf8', true);
-            if (distToPlayer <= 12) {
-              takePlayerDamage(mob.def.atk * 1.25, mob.def.name, { infect: true });
+            vfx.spawnDragonShout(pos, dirToPlayer, 13.5);
+            if (mob.type === 'storm_dragon') {
+              vfx.spawnLightning(playerRoot.position.clone(), []);
+            }
+            const shoutTxt = mob.type === 'cthulhu'
+              ? '🐙 舊日瘋狂低語!'
+              : mob.type === 'tengu'
+                ? '👺 天狗烈風斬!'
+                : mob.type === 'storm_dragon'
+                  ? '⚡ 蒼穹天雷咆哮!'
+                  : '🗣️ FUS RO DAH!';
+            spawnFloatingText(pos, shoutTxt, '#38bdf8', true);
+            if (distToPlayer <= 13.5) {
+              takePlayerDamage(mobAtk * 1.25, mob.def.name, {
+                infect: !!mob.def.infect,
+                petrify: !!mob.def.petrify
+              });
               playerRoot.position.addScaledVector(dirToPlayer, 4.8);
             }
           }
         }
 
-        // 3. Special Boss Skill: Cyclops Exploding Boulder Throw from range!
+        // 3. Exploding Boulder / Ink Bomb Throw (Cyclops / Yeti / Kraken)
         if (mob.def.boulderCooldown) {
           mob.boulderTimer -= dt;
-          if (mob.boulderTimer <= 0 && distToPlayer >= 4.0 && distToPlayer <= 18) {
+          if (mob.boulderTimer <= 0 && distToPlayer >= 4.0 && distToPlayer <= 19) {
             mob.boulderTimer = mob.def.boulderCooldown;
             const targetSpot = playerRoot.position.clone();
-            spawnFloatingText(pos, '🪨 巨岩投擲!', '#facc15', true);
+            const throwTxt = mob.type === 'kraken' ? '🦑 深海墨彈!' : mob.type === 'yeti' ? '❄️ 冰岩投擲!' : '🪨 巨岩投擲!';
+            spawnFloatingText(pos, throwTxt, '#facc15', true);
             vfx.spawnBombProjectile(pos, targetSpot, (hitPos) => {
               vfx.spawnEarthSpikes(hitPos, dirToPlayer, 3.8);
-              if (!isDead && playerRoot.position.distanceTo(hitPos) <= 4.0) {
-                takePlayerDamage(mob.def.atk * 1.35, mob.def.name);
+              if (!isDead && playerRoot.position.distanceTo(hitPos) <= 4.2) {
+                takePlayerDamage(mobAtk * 1.35, mob.def.name, {
+                  infect: !!mob.def.infect,
+                  petrify: mob.type === 'yeti'
+                });
               }
             });
           }
         }
 
-        // 4. Special Boss Skill: Dragon / Hydra / Cerberus / Chimera Breath Telegraph!
+        // 4. Mythic Breath / Solar Flare / Eldritch Cataclysm Telegraph!
         if (mob.def.breathCooldown) {
           mob.breathTimer -= dt;
-          if (mob.breathTimer <= 0 && distToPlayer <= 20) {
+          if (mob.breathTimer <= 0 && distToPlayer <= 22) {
             mob.breathTimer = mob.def.breathCooldown;
             const targetSpot = playerRoot.position.clone();
-            vfx.spawnDragonBreathWarning(targetSpot, 7.2, 1.1, (blastPos) => {
-              if (!isDead && playerRoot.position.distanceTo(blastPos) <= 7.2) {
+            vfx.spawnDragonBreathWarning(targetSpot, 7.6, 1.08, (blastPos) => {
+              if (mob.type === 'frost_wyrm' || mob.type === 'leviathan') {
+                vfx.spawnFrostNova(blastPos, 7.2);
+              } else if (mob.type === 'storm_dragon') {
+                vfx.spawnLightning(blastPos, []);
+              }
+              if (!isDead && playerRoot.position.distanceTo(blastPos) <= 7.6) {
                 takePlayerDamage(
-                  mob.def.atk * 1.65,
+                  mobAtk * 1.65,
                   mob.def.name,
                   {
                     infect: !!mob.def.infect,
-                    hellfire: !!mob.def.hellfire
+                    hellfire: !!mob.def.hellfire,
+                    petrify: !!mob.def.petrify
                   }
                 );
               }
@@ -2537,7 +2919,7 @@ function initGame() {
           mob.atkTimer -= dt;
           if (mob.atkTimer <= 0) {
             mob.atkTimer = mob.def.attackCooldown * (isEnraged ? 0.76 : 1.0);
-            const rawAtk = mob.def.atk * (isEnraged ? 1.35 : 1.0);
+            const rawAtk = mobAtk * (isEnraged ? 1.35 : 1.0);
 
             if (mob.type === 'gnome') {
               const targetSpot = playerRoot.position.clone();
@@ -2546,43 +2928,42 @@ function initGame() {
                   takePlayerDamage(rawAtk, mob.def.name);
                 }
               });
-            } else if (mob.type === 'centaur') {
-              // Centaur high-speed piercing arrow shot
+            } else if (mob.type === 'centaur' || mob.type === 'kyubi') {
+              // Ranged arrow / Nine-Tail Foxfire bolt
               vfx.spawnFireball(
                 pos,
                 dirToPlayer,
-                13,
-                (arrowPos) => !isDead && playerRoot.position.distanceTo(arrowPos) <= 1.6,
+                14,
+                (projPos) => !isDead && playerRoot.position.distanceTo(projPos) <= 1.7,
                 (hitPos) => {
-                  if (!isDead && playerRoot.position.distanceTo(hitPos) <= 2.6) {
-                    takePlayerDamage(rawAtk, mob.def.name);
+                  if (!isDead && playerRoot.position.distanceTo(hitPos) <= 2.8) {
+                    takePlayerDamage(rawAtk, mob.def.name, {
+                      hellfire: mob.type === 'kyubi',
+                      petrify: mob.type === 'kyubi'
+                    });
                   }
                 }
               );
-            } else if (mob.type === 'medusa') {
-              // Medusa Petrifying Gaze shockwave
-              vfx.spawnDragonShout(pos, dirToPlayer, 9.5);
+            } else if (mob.type === 'medusa' || mob.type === 'cthulhu') {
+              vfx.spawnDragonShout(pos, dirToPlayer, 9.8);
               vfx.spawnPoisonCloud(playerRoot.position);
               takePlayerDamage(rawAtk, mob.def.name, { infect: true, petrify: true });
-            } else if (mob.type === 'cerberus' || mob.type === 'chimera') {
-              takePlayerDamage(rawAtk, mob.def.name, {
-                hellfire: true,
-                infect: mob.type === 'chimera'
-              });
-            } else if (mob.type === 'zombie' || mob.type === 'hydra' || mob.type === 'draugr_lord') {
-              takePlayerDamage(rawAtk, mob.def.name, { infect: true });
             } else if (mob.type === 'vampire') {
               takePlayerDamage(rawAtk, mob.def.name);
               const drainHeal = Math.round(rawAtk * (mob.def.lifesteal || 0.75));
-              mob.hp = Math.min(mob.def.maxHp, mob.hp + drainHeal);
-              mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
+              mob.hp = Math.min(mobMaxHp, mob.hp + drainHeal);
+              mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mobLvl}`, mob.hp / mobMaxHp);
               spawnFloatingText(pos, `🦇 +${drainHeal}`, '#f43f5e', false);
-            } else if (mob.type === 'ogre' || mob.type === 'minotaur' || mob.type === 'cyclops') {
+            } else if (mob.def.stomp) {
               vfx.spawnEarthSpikes(pos, dirToPlayer, 5.4);
-              takePlayerDamage(rawAtk, mob.def.name);
-              playerRoot.position.addScaledVector(dirToPlayer, mob.type === 'cyclops' ? 3.5 : 2.6);
+              takePlayerDamage(rawAtk, mob.def.name, { infect: !!mob.def.infect });
+              playerRoot.position.addScaledVector(dirToPlayer, 3.0);
             } else {
-              takePlayerDamage(rawAtk, mob.def.name);
+              takePlayerDamage(rawAtk, mob.def.name, {
+                infect: !!mob.def.infect,
+                hellfire: !!mob.def.hellfire,
+                petrify: !!mob.def.petrify
+              });
             }
           }
         }
@@ -2594,9 +2975,9 @@ function initGame() {
         toHome.normalize();
         pos.addScaledVector(toHome, mob.def.speed * 0.85 * dt);
         moving = true;
-        if (mob.hp < mob.def.maxHp) {
-          mob.hp = Math.min(mob.def.maxHp, mob.hp + mob.def.maxHp * 0.08 * dt);
-          mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mob.def.level}`, mob.hp / mob.def.maxHp);
+        if (mob.hp < mobMaxHp) {
+          mob.hp = Math.min(mobMaxHp, mob.hp + mobMaxHp * 0.08 * dt);
+          mob.visual.hpBar.redraw(`${mob.def.name} Lv.${mobLvl}`, mob.hp / mobMaxHp);
         }
       }
 
